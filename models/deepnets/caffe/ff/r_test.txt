@@ -1,0 +1,2 @@
+/projects/francisco/data/caffe/r_mci_cn_test.h5
+

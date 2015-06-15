@@ -1,0 +1,1 @@
+/projects/francisco/data/caffe/r_mci_cn_train.h5
