@@ -1,0 +1,15 @@
+net: "lrnet.prototxt"               # Net definition file
+test_iter: 25                       # Number of validation iterations: test_iter x test_batch_size ~= # test samples
+test_interval: 1000                 # When to run validation during training
+base_lr: 0.1                       # Starting learning rate
+lr_policy: "step"                   # Learning rate adjustment policy
+gamma: 0.1                          # Learning rate multiplier
+stepsize: 1000                     # Iterations between learning rate change
+display: 1000                       # Iterations between print output
+max_iter: 10000                    # Iterations before training finishes
+momentum: 0.9                       # Momemtum!
+weight_decay: 0.0005                # Regularization term
+snapshot: 1000                    # How often to save snapshot of model
+snapshot_prefix: "./train/"       # Path to snapshot output folder
+solver_mode: GPU                    # CPU or GPU use
+
