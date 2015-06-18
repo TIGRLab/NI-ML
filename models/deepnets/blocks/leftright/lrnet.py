@@ -55,7 +55,7 @@ output_mlp = MLP(activations=[
                      32,
                      8,
                      8,
-                     1,  # binary output
+                     2,
                  ],
                  weights_init=IsotropicGaussian(),
                  biases_init=IsotropicGaussian())
@@ -81,8 +81,8 @@ y_hat = output_mlp.apply(merge)
 
 # Define a cost function to optimize, and a classification error rate:
 # Also apply the outputs from the net, and corresponding targets:
-cost = BinaryCrossEntropy(name='cost_func').apply(y, y_hat)
-error = MisclassificationRate().apply(y, y_hat)
+cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat)
+error = MisclassificationRate().apply(y.flatten(), y_hat)
 error.name = 'error'
 
 # Need to define the computation graph:
@@ -99,12 +99,13 @@ cost.name = 'entropy'
 # Apply dropout to inputs:
 graph = ComputationGraph(y_hat)
 inputs = VariableFilter([INPUT])(graph.variables)
-graph = apply_dropout(graph, inputs, 0.2)
+dropout_graph = apply_dropout(graph, inputs, 0.2)
+dropout_cost = dropout_graph.outputs[0]
 
 # Learning Algorithm:
 algo = GradientDescent(
     step_rule=Scale(learning_rate=0.1),
-    params=graph.parameters,
+    params=dropout_graph.parameters,
     cost=cost)
 
 # Data stream used for training model:
@@ -113,7 +114,7 @@ data_stream = Flatten(
         dataset=train,
         iteration_scheme=SequentialScheme(
             train.num_examples,
-            batch_size=256)))
+            batch_size=128)))
 
 # Use the 'valid' set for validation during training:
 validation_stream = Flatten(
@@ -121,7 +122,7 @@ validation_stream = Flatten(
         dataset=valid,
         iteration_scheme=SequentialScheme(
             valid.num_examples,
-            batch_size=1024)))
+            batch_size=256)))
 
 monitor = DataStreamMonitoring(
     variables=[cost, error],
@@ -133,9 +134,9 @@ monitor = DataStreamMonitoring(
 main = MainLoop(data_stream=data_stream,
                 algorithm=algo,
                 extensions=[
-                    FinishAfter(after_n_epochs=2),
+                    FinishAfter(after_n_epochs=10),
                     Printing(),
-                    # monitor,
+                    monitor,
                     TrainingDataMonitoring([cost, error], after_batch=True),
                     Plot('LR_AdniNet',
                          channels=[

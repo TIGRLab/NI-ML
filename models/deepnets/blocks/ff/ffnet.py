@@ -1,4 +1,4 @@
-from fuel.schemes import SequentialScheme
+from fuel.schemes import SequentialScheme, ShuffledScheme
 from fuel.streams import DataStream
 from fuel.transformers import Flatten
 import theano
@@ -12,8 +12,9 @@ from blocks.bricks import MLP, Rectifier, Softmax, Logistic
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate
 from blocks.extensions import FinishAfter
 from blocks.extensions import Printing
+from blocks.extras.extensions.plot import Plot
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
-from blocks.extensions.plot import Plot
+from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.initialization import IsotropicGaussian, Constant
@@ -23,8 +24,20 @@ from blocks.roles import WEIGHT, INPUT
 from blocks.theano_expressions import l2_norm
 
 # side = b, l, r
-side = 'r'
-EPOCHS = 50
+# Left Side Hyperparams:
+side = 'l'
+EPOCHS = 100
+lr = 0.0035
+tr_batch = 32
+v_batch = 32
+w_sd_init=0.01
+w_mu_init=0
+w_b_init=0.01
+dropout_ratio = 0.25
+l2_lambda = 0.001
+step_rule=RMSProp(learning_rate=lr)
+#step_rule=Scale()
+
 input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
 data_file = '/projects/francisco/data/fuel/mci_cn.h5'
 
@@ -47,21 +60,21 @@ y = tensor.lmatrix('targets')
 
 # Define a feed-forward net with an input, two hidden layers, and a softmax output:
 model = MLP(activations=[
-    Rectifier(name='input'),
     Rectifier(name='h1'),
     Rectifier(name='h2'),
-    Rectifier(name='h3'),
+    #Rectifier(name='h3'),
+    #Rectifier(name='h4'),
     Softmax(name='output'),
 ],
             dims=[
                 input_dim[side],
                 32,
                 32,
-                16,
-                16,
+                #16,
+                #16,
                 2],
-            weights_init=IsotropicGaussian(),
-            biases_init=Constant(0.1))
+            weights_init=IsotropicGaussian(std=w_sd_init, mean=w_mu_init),
+            biases_init=Constant(w_b_init))
 
 # Don't forget to initialize params:
 model.initialize()
@@ -72,38 +85,47 @@ y_hat = model.apply(x)
 # Define a cost function to optimize, and a classification error rate.
 # Also apply the outputs from the net and corresponding targets:
 cost = CategoricalCrossEntropy().apply(y.flatten(), y_hat)
-cost.name = 'entropy'
 error = MisclassificationRate().apply(y.flatten(), y_hat)
 error.name = 'error'
 
 # This is the model: before applying dropout
-model = Model(error)
+model = Model(cost)
 
 # Need to define the computation graph for the cost func:
-cost_graph = ComputationGraph(cost)
+cost_graph = ComputationGraph([cost])
 
 # This returns a list of weight vectors for each layer
 W = VariableFilter(roles=[WEIGHT])(cost_graph.variables)
 
+# Add some regularization to this model:
+cost += l2_lambda * l2_norm(W)
+cost.name = 'entropy'
+
+# computational graph with l2 reg
+cost_graph = ComputationGraph([cost])
+
 # Apply dropout to inputs:
-input_graph = ComputationGraph(y_hat)
-inputs = VariableFilter([INPUT])(input_graph.variables)
-dropout_graph = apply_dropout(input_graph, inputs, 0.2)
+inputs = VariableFilter([INPUT])(cost_graph.variables)
+dropout_inputs = [input for input in inputs if input.name.startswith('linear_')]
+dropout_graph = apply_dropout(cost_graph, dropout_inputs, dropout_ratio)
 dropout_cost = dropout_graph.outputs[0]
+dropout_cost.name = 'dropout_entropy'
 
 # Learning Algorithm:
 algo = GradientDescent(
-    step_rule=Scale(learning_rate=0.1),
+    step_rule=step_rule,
     params=dropout_graph.parameters,
-    cost=cost)
+    cost=dropout_cost)
+
+# algo.step_rule.learning_rate.name = 'learning_rate'
 
 # Data stream used for training model:
-data_stream = Flatten(
+training_stream = Flatten(
     DataStream.default_stream(
         dataset=train,
-        iteration_scheme=SequentialScheme(
+        iteration_scheme=ShuffledScheme(
             train.num_examples,
-            batch_size=256)))
+            batch_size=tr_batch)))
 
 training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
 
@@ -111,26 +133,53 @@ training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
 validation_stream = Flatten(
     DataStream.default_stream(
         dataset=valid,
-        iteration_scheme=SequentialScheme(
+        iteration_scheme=ShuffledScheme(
             valid.num_examples,
-            batch_size=1024)))
+            batch_size=v_batch)))
 
 validation_monitor = DataStreamMonitoring(
     variables=[cost, error],
     data_stream=validation_stream,
     prefix='validation')
 
+test_stream = Flatten(
+    DataStream.default_stream(
+        dataset=test,
+        iteration_scheme=ShuffledScheme(
+            test.num_examples,
+            batch_size=test.num_examples)))
+
+test_monitor = DataStreamMonitoring(
+    variables=[error],
+    data_stream=test_stream,
+    prefix='test'
+)
+
+
+# param_monitor = DataStreamMonitoring(
+# variables=[algo.step_rule.learning_rate],
+#     data_stream=validation_stream,
+#     prefix='params')
+
+plotting = Plot('AdniNet_{}'.format(side),
+                channels=[
+                    ['entropy', 'validation_entropy'],
+                    ['error', 'validation_error'],
+                ],
+                after_batch=False)
+
 # The main loop will train the network and output reports, etc
-main = MainLoop(data_stream=data_stream,
-                model=model,
-                algorithm=algo,
-                extensions=[
-                    FinishAfter(after_n_epochs=EPOCHS),
-                    Printing(),
-                    validation_monitor,
-                    training_monitor,
-                    Plot('AdniNet_{}'.format(side), channels=[['entropy', 'validation_entropy'],
-                                                              ['error', 'validation_error']],
-                         after_batch=True)
-                ])
+main = MainLoop(
+    data_stream=training_stream,
+    model=model,
+    algorithm=algo,
+    extensions=[
+        FinishAfter(after_n_epochs=EPOCHS),
+        FinishIfNoImprovementAfter(notification_name='validation_error', epochs=3),
+        Printing(),
+        validation_monitor,
+        training_monitor,
+        test_monitor,
+        plotting,
+    ])
 main.run()
