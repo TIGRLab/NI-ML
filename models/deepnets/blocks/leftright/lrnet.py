@@ -3,7 +3,7 @@ from fuel.schemes import SequentialScheme
 from fuel.streams import DataStream
 from fuel.transformers import Flatten
 from theano import tensor
-from blocks.algorithms import GradientDescent, RMSProp, Scale
+from blocks.algorithms import GradientDescent, RMSProp, Scale, AdaGrad
 from blocks.bricks import MLP, Rectifier, Softmax, Logistic
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate, BinaryCrossEntropy
 from blocks.bricks.parallel import Parallel, Merge
@@ -15,6 +15,7 @@ from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.initialization import IsotropicGaussian, Constant
 from blocks.main_loop import MainLoop
+from blocks.model import Model
 from blocks.roles import WEIGHT, INPUT
 from blocks.theano_expressions import l2_norm
 
@@ -96,17 +97,23 @@ lam = 0.001
 cost += lam * l2_norm(W)
 cost.name = 'entropy'
 
+# This is the model without dropout, but with l2 reg.
+model = Model(cost)
+
 # Apply dropout to inputs:
 graph = ComputationGraph(y_hat)
 inputs = VariableFilter([INPUT])(graph.variables)
 dropout_graph = apply_dropout(graph, inputs, 0.2)
 dropout_cost = dropout_graph.outputs[0]
+dropout_cost.name = 'dropout_entropy'
 
 # Learning Algorithm:
 algo = GradientDescent(
-    step_rule=Scale(learning_rate=0.1),
+    # step_rule=Scale(learning_rate=0.1),
+    #step_rule=AdaGrad(),
+    step_rule=RMSProp(),
     params=dropout_graph.parameters,
-    cost=cost)
+    cost=dropout_cost) # We train on the model with dropout.
 
 # Data stream used for training model:
 data_stream = Flatten(
@@ -116,6 +123,8 @@ data_stream = Flatten(
             train.num_examples,
             batch_size=128)))
 
+training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
+
 # Use the 'valid' set for validation during training:
 validation_stream = Flatten(
     DataStream.default_stream(
@@ -124,24 +133,26 @@ validation_stream = Flatten(
             valid.num_examples,
             batch_size=256)))
 
-monitor = DataStreamMonitoring(
+validation_monitor = DataStreamMonitoring(
     variables=[cost, error],
     data_stream=validation_stream,
     prefix='validation',
     after_batch=False)
 
 # The main loop will train the network and output reports, etc
-main = MainLoop(data_stream=data_stream,
-                algorithm=algo,
-                extensions=[
-                    FinishAfter(after_n_epochs=10),
-                    Printing(),
-                    monitor,
-                    TrainingDataMonitoring([cost, error], after_batch=True),
-                    Plot('LR_AdniNet',
-                         channels=[
-                             ['entropy', 'validation_entropy'],
-                             ['error', 'validation_error']],
-                         after_batch=True)
-                ])
+main = MainLoop(
+    model=model,
+    data_stream=data_stream,
+    algorithm=algo,
+    extensions=[
+        FinishAfter(after_n_epochs=10),
+        Printing(),
+        validation_monitor,
+        training_monitor,
+        Plot('LR_AdniNet',
+             channels=[
+                 ['entropy', 'validation_entropy'],
+                 ['error', 'validation_error']],
+             after_batch=True)
+    ])
 print "Model Initialized, Data Loaded: Start training with main.run()"
