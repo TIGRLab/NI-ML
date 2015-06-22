@@ -1,0 +1,14 @@
+[hyperparams]
+side : l
+max_iter : 100
+base_lr : 0.0035
+train_batch : 32
+valid_batch : 32
+test_batch : 32
+W_sd:0.01
+W_mu:0
+W_b:0.01
+dropout_ratio : 0.25
+weight_decay : 0.001
+solver_type: rmsprop
+data_file : /projects/francisco/data/fuel/mci_cn.h5

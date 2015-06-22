@@ -1,3 +1,5 @@
+import ConfigParser
+import datetime
 from fuel.schemes import SequentialScheme, ShuffledScheme
 from fuel.streams import DataStream
 from fuel.transformers import Flatten
@@ -5,6 +7,7 @@ import theano
 from theano import tensor
 
 from fuel.datasets.hdf5 import H5PYDataset
+import time
 from blocks.algorithms import GradientDescent, Adam, RMSProp, Scale, AdaDelta
 from blocks.algorithms import AdaGrad
 
@@ -14,6 +17,7 @@ from blocks.extensions import FinishAfter
 from blocks.extensions import Printing
 from blocks.extras.extensions.plot import Plot
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph, apply_dropout
@@ -23,23 +27,31 @@ from blocks.model import Model
 from blocks.roles import WEIGHT, INPUT
 from blocks.theano_expressions import l2_norm
 
-# side = b, l, r
-# Left Side Hyperparams:
-side = 'l'
-EPOCHS = 100
-lr = 0.0035
-tr_batch = 32
-v_batch = 32
-w_sd_init=0.01
-w_mu_init=0
-w_b_init=0.01
-dropout_ratio = 0.25
-l2_lambda = 0.001
-step_rule=RMSProp(learning_rate=lr)
-#step_rule=Scale()
+
+config = ConfigParser.ConfigParser()
+config.readfp(open('./params'))
+
+side = config.get('hyperparams', 'side', 'b')
+max_iter = int(config.get('hyperparams', 'max_iter', 100))
+base_lr = float(config.get('hyperparams', 'base_lr', 0.01))
+train_batch = int(config.get('hyperparams', 'train_batch', 256))
+valid_batch = int(config.get('hyperparams', 'valid_batch', 256))
+test_batch = int(config.get('hyperparams', 'valid_batch', 256))
+
+W_sd = float(config.get('hyperparams', 'W_sd', 0.01))
+W_mu = float(config.get('hyperparams', 'W_mu', 0.0))
+W_b = float(config.get('hyperparams', 'W_b', 0.01))
+dropout_ratio = float(config.get('hyperparams', 'dropout_ratio', 0.2))
+weight_decay = float(config.get('hyperparams', 'weight_decay', 0.001))
+solver = config.get('hyperparams', 'solver_type', 'rmsprop')
+
+if 'adagrad' in solver:
+    solver_type = AdaGrad()
+else:
+    solver_type = RMSProp(learning_rate=base_lr)
 
 input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
-data_file = '/projects/francisco/data/fuel/mci_cn.h5'
+data_file = config.get('hyperparams', 'data_file')
 
 if 'b' in side:
     train = H5PYDataset(data_file, which_set='train')
@@ -62,19 +74,15 @@ y = tensor.lmatrix('targets')
 model = MLP(activations=[
     Rectifier(name='h1'),
     Rectifier(name='h2'),
-    #Rectifier(name='h3'),
-    #Rectifier(name='h4'),
     Softmax(name='output'),
 ],
             dims=[
                 input_dim[side],
                 32,
                 32,
-                #16,
-                #16,
                 2],
-            weights_init=IsotropicGaussian(std=w_sd_init, mean=w_mu_init),
-            biases_init=Constant(w_b_init))
+            weights_init=IsotropicGaussian(std=W_sd, mean=W_mu),
+            biases_init=Constant(W_b))
 
 # Don't forget to initialize params:
 model.initialize()
@@ -98,7 +106,7 @@ cost_graph = ComputationGraph([cost])
 W = VariableFilter(roles=[WEIGHT])(cost_graph.variables)
 
 # Add some regularization to this model:
-cost += l2_lambda * l2_norm(W)
+cost += weight_decay * l2_norm(W)
 cost.name = 'entropy'
 
 # computational graph with l2 reg
@@ -113,7 +121,7 @@ dropout_cost.name = 'dropout_entropy'
 
 # Learning Algorithm:
 algo = GradientDescent(
-    step_rule=step_rule,
+    step_rule=solver_type,
     params=dropout_graph.parameters,
     cost=dropout_cost)
 
@@ -125,7 +133,7 @@ training_stream = Flatten(
         dataset=train,
         iteration_scheme=ShuffledScheme(
             train.num_examples,
-            batch_size=tr_batch)))
+            batch_size=train_batch)))
 
 training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
 
@@ -135,7 +143,7 @@ validation_stream = Flatten(
         dataset=valid,
         iteration_scheme=ShuffledScheme(
             valid.num_examples,
-            batch_size=v_batch)))
+            batch_size=valid_batch)))
 
 validation_monitor = DataStreamMonitoring(
     variables=[cost, error],
@@ -158,7 +166,7 @@ test_monitor = DataStreamMonitoring(
 
 # param_monitor = DataStreamMonitoring(
 # variables=[algo.step_rule.learning_rate],
-#     data_stream=validation_stream,
+# data_stream=validation_stream,
 #     prefix='params')
 
 plotting = Plot('AdniNet_{}'.format(side),
@@ -169,17 +177,20 @@ plotting = Plot('AdniNet_{}'.format(side),
                 after_batch=False)
 
 # The main loop will train the network and output reports, etc
+
+stamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
 main = MainLoop(
     data_stream=training_stream,
     model=model,
     algorithm=algo,
     extensions=[
-        FinishAfter(after_n_epochs=EPOCHS),
+        FinishAfter(after_n_epochs=max_iter),
         FinishIfNoImprovementAfter(notification_name='validation_error', epochs=3),
         Printing(),
         validation_monitor,
         training_monitor,
         test_monitor,
         plotting,
+        Checkpoint('./models/{}net/{}'.format(side, stamp))
     ])
 main.run()
