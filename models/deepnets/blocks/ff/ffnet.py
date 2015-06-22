@@ -135,7 +135,7 @@ training_stream = Flatten(
             train.num_examples,
             batch_size=train_batch)))
 
-training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
+training_monitor = TrainingDataMonitoring([dropout_cost, error], after_batch=True)
 
 # Use the 'valid' set for validation during training:
 validation_stream = Flatten(
@@ -171,7 +171,7 @@ test_monitor = DataStreamMonitoring(
 
 plotting = Plot('AdniNet_{}'.format(side),
                 channels=[
-                    ['entropy', 'validation_entropy'],
+                    ['dropout_entropy', 'validation_entropy'],
                     ['error', 'validation_error'],
                 ],
                 after_batch=False)

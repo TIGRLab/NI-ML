@@ -29,7 +29,6 @@ from blocks.theano_expressions import l2_norm
 config = ConfigParser.ConfigParser()
 config.readfp(open('./params'))
 
-side = config.get('hyperparams', 'side', 'b')
 max_iter = int(config.get('hyperparams', 'max_iter', 100))
 base_lr = float(config.get('hyperparams', 'base_lr', 0.01))
 train_batch = int(config.get('hyperparams', 'train_batch', 256))
@@ -51,8 +50,8 @@ else:
 
 pre_trained_folder = '../ff/models/'
 
-rn_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/ff/models/rnet/tmpywwLvQ'
-ln_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/ff/models/lnet/2015-06-22-13:48'
+rn_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/ff/models/rnet/2015-06-22-17:45'
+ln_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/ff/models/lnet/2015-06-22-17:40'
 
 right_dim = 10519
 left_dim = 11427
@@ -156,7 +155,7 @@ training_stream = Flatten(
             train.num_examples,
             batch_size=train_batch)))
 
-training_monitor = TrainingDataMonitoring([cost, error], after_batch=True)
+training_monitor = TrainingDataMonitoring([dropout_cost, error], after_batch=True)
 
 # Use the 'valid' set for validation during training:
 validation_stream = Flatten(
@@ -186,7 +185,7 @@ test_monitor = DataStreamMonitoring(
 
 plotting = Plot('AdniNet_LeftRight',
                 channels=[
-                    ['entropy', 'validation_entropy'],
+                    ['dropout_entropy', 'validation_entropy'],
                     ['error', 'validation_error'],
                 ],
                 after_batch=False)
@@ -206,6 +205,6 @@ main = MainLoop(
         training_monitor,
         test_monitor,
         plotting,
-        Checkpoint('./models/{}'.format(side, stamp))
+        Checkpoint('./models/{}'.format(stamp))
     ])
 main.run()

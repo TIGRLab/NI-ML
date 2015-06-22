@@ -1,8 +1,8 @@
 [hyperparams]
-side : l
-max_iter : 100
-base_lr : 0.0035
-train_batch : 32
+side : r
+max_iter : 50
+base_lr : 0.002475
+train_batch : 16
 valid_batch : 4647
 test_batch : 5855
 W_sd:0.01
