@@ -1,5 +1,5 @@
 [hyperparams]
-side : l
+side : b
 max_iter : 100
 base_lr : 0.0035
 train_batch : 32

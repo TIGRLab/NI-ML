@@ -1,7 +1,7 @@
 import ConfigParser
 import datetime
 from fuel.datasets import H5PYDataset
-from fuel.schemes import ShuffledScheme
+from fuel.schemes import ShuffledScheme, ShuffledExampleScheme
 from fuel.streams import DataStream
 from fuel.transformers import Flatten
 import numpy
@@ -21,6 +21,7 @@ from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph, apply_dropout
 from blocks.main_loop import MainLoop
 from blocks.model import Model
+from blocks.monitoring import aggregation
 from blocks.roles import INPUT, OUTPUT, WEIGHT
 from blocks.initialization import IsotropicGaussian
 from blocks.serialization import load
@@ -155,7 +156,11 @@ training_stream = Flatten(
             train.num_examples,
             batch_size=train_batch)))
 
-training_monitor = TrainingDataMonitoring([dropout_cost, error], after_batch=True)
+training_monitor = TrainingDataMonitoring([aggregation.mean(dropout_cost),
+                                           aggregation.mean(error),
+                                           aggregation.mean(algo.total_gradient_norm)],
+                                          every_n_epochs=1)
+
 
 # Use the 'valid' set for validation during training:
 validation_stream = Flatten(
@@ -168,7 +173,8 @@ validation_stream = Flatten(
 validation_monitor = DataStreamMonitoring(
     variables=[cost, error],
     data_stream=validation_stream,
-    prefix='validation')
+    prefix='validation',
+    every_n_epochs=1)
 
 test_stream = Flatten(
     DataStream.default_stream(
@@ -180,15 +186,14 @@ test_stream = Flatten(
 test_monitor = DataStreamMonitoring(
     variables=[error],
     data_stream=test_stream,
-    prefix='test'
-)
+    prefix='test')
 
 plotting = Plot('AdniNet_LeftRight',
                 channels=[
                     ['dropout_entropy', 'validation_entropy'],
                     ['error', 'validation_error'],
                 ],
-                after_batch=False)
+                every_n_epochs=1)
 
 stamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
 
@@ -200,7 +205,7 @@ main = MainLoop(
     extensions=[
         FinishAfter(after_n_epochs=max_iter),
         FinishIfNoImprovementAfter(notification_name='validation_error', epochs=3),
-        Printing(),
+        Printing(after_epoch=True, every_n_epochs=1),
         validation_monitor,
         training_monitor,
         test_monitor,

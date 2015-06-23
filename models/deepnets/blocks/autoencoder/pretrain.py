@@ -10,7 +10,7 @@ import theano
 from theano import tensor, function
 from blocks.extras.extensions.plot import Plot
 from blocks.algorithms import GradientDescent, AdaGrad, RMSProp
-from blocks.bricks import Rectifier, MLP, Logistic, Softmax
+from blocks.bricks import Rectifier, MLP, Logistic, Softmax, Linear
 from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate, SquaredError
 from blocks.extensions import FinishAfter
 from blocks.extensions import Printing
@@ -49,46 +49,43 @@ if 'adagrad' in solver:
 else:
     solver_type = RMSProp(learning_rate=base_lr)
 
-
-
 pre_trained_folder = '../models/'
 input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
 
-train = H5PYDataset(data_file, which_set='train')
-valid = H5PYDataset(data_file, which_set='valid')
-test = H5PYDataset(data_file, which_set='test')
+train = H5PYDataset(data_file, which_set='train', sources=['l_features', 'r_features'])
+valid = H5PYDataset(data_file, which_set='valid', sources=['l_features', 'r_features'])
+test = H5PYDataset(data_file, which_set='test', sources=['l_features', 'r_features'])
 x_l = tensor.matrix('l_features')
 x_r = tensor.matrix('r_features')
 x = tensor.concatenate([x_l, x_r], axis=1)
-y = tensor.lmatrix('targets')
 
 # Define a feed-forward net with an input, two hidden layers, and a softmax output:
-model = MLP(activations=[
-    Rectifier(name='h1'),
+autoencoder = MLP(activations=[
+    #Rectifier(name='h1'),
     Rectifier(name='h2'),
-    Rectifier(name='h3'),
+    #Rectifier(name='h3'),
 ],
             dims=[
                 input_dim[side],
-                4096,
+                #4096,
                 128,
-                4096,
+                #4096,
                 ],
             weights_init=IsotropicGaussian(std=W_sd, mean=W_mu),
             biases_init=Constant(W_b))
 
 # Don't forget to initialize params:
-model.initialize()
+autoencoder.initialize()
 
-# y_hat is the output of the neural net with x as its inputs
-y_hat = model.apply(x)
+# Reconstruction layer:
+x_hat = Linear(input_dim=128, output_dim=input_dim[side]).apply(autoencoder.apply(x))
 
 # Define a cost function to optimize, and a classification error rate.
 # Also apply the outputs from the net and corresponding targets:
-cost = SquaredError().apply(y.flatten(), y_hat)
+cost = SquaredError().apply(x, x_hat)
 
 # This is the model: before applying dropout
-model = Model(cost)
+autoencoder = Model(cost)
 
 # Need to define the computation graph for the cost func:
 cost_graph = ComputationGraph([cost])
@@ -172,7 +169,7 @@ plotting = Plot('AdniNet_{}'.format(side),
 stamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
 main = MainLoop(
     data_stream=training_stream,
-    model=model,
+    model=autoencoder,
     algorithm=algo,
     extensions=[
         FinishAfter(after_n_epochs=max_iter),
