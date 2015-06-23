@@ -66,20 +66,19 @@ if __name__ == "__main__":
             train = datah.get_node(features_template.format(side, 'train'))[:]
             train_labels = datah.get_node(labels_template.format(side, 'train'))[:]
             train_splits = split_3_way(train, train_labels)
+            train_X = train_splits[k]['X']
+            train_y = train_splits[k]['y']
 
             valid = datah.get_node(features_template.format(side, 'valid'))[:]
             valid_labels = datah.get_node(labels_template.format(side, 'valid'))[:]
             valid_splits = split_3_way(valid, valid_labels)
+            valid_X = valid_splits[k]['X']
+            valid_y = valid_splits[k]['y']
 
             test = datah.get_node(features_template.format(side, 'test'))[:]
             test_labels = datah.get_node(labels_template.format(side, 'test'))[:]
             test_splits = split_3_way(test, test_labels)
-
-            train_X = train_splits[k]['X']
-            valid_X = valid_splits[k]['X']
             test_X = test_splits[k]['X']
-            train_y = train_splits[k]['y']
-            valid_y = valid_splits[k]['y']
             test_y = test_splits[k]['y']
 
             # Concatenate training, validation, and test features/labels into single matrix:

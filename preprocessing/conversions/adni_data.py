@@ -10,6 +10,20 @@ sides = [
     'l',
 ]
 
+def balanced_mci_indexes(y):
+    """
+    Reduces the number of mci samples to be the same size as the other class of samples.
+    :param y: Class labels vector for both mci and other class.
+    :return: Indexes of mci and other class samples to make a balanced set.
+    """
+    mcinds = np.where(y == 2)[0]
+    oinds = np.where(y != 2)[0]
+    reduced_mcinds = mcinds[0: oinds.shape[0]]
+    inds = np.concatenate((reduced_mcinds, oinds))
+    np.random.shuffle(inds)
+    return inds
+
+
 # Splits used for the AD-MCI-CN 3-way classification of ADNI data.
 # Each item in the 'splits' dict represents one of the 2-way classifiers used on the ADNI dataset:
 # ie: 'ad_cn' is the data split for the alzheimer's vs control classifier
@@ -51,8 +65,14 @@ def split_3_way(X, y):
     :return: The splits dictionary defined above, including the X and y matrices for each split.
     """
     for k, v in splits.items():
-        indexes = np.where(y != v['ni'])
-        v['X'] = X[indexes]
-        v['y'] = v['labelfn'](y[indexes])
+        indexes = np.where(y != v['ni'])[0]
+        _X = X[indexes]
+        _y = y[indexes]
+        if 'mci' in k:
+            mci_inds= balanced_mci_indexes(_y)
+            _X = _X[mci_inds]
+            _y = _y[mci_inds]
+        v['X'] = _X
+        v['y'] = v['labelfn'](_y)
 
     return splits
