@@ -9,7 +9,8 @@ import numpy as np
 import h5py
 from docopt import docopt
 from fuel.datasets.hdf5 import H5PYDataset
-from adni_data import split_3_way, splits, features_template, labels_template, sides, datafile, load_data
+from adni_data import split_3_way, splits, features_template, labels_template, sides, datafile, load_data, \
+    balanced_mci_indexes, input_dim
 
 
 def make_file(outfile, inda, indb, indc, X, y):
@@ -58,33 +59,52 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
     datah = load_data()
-    X = {}
+    X = {
+        'l': {},
+        'r': {},
+        'b': {}
+    }
+    y = {
+        'l': {},
+        'r': {},
+        'b': {}
+    }
 
-    for k in splits.keys():
-        for side in sides:
-            logging.info('Making {} Split...'.format(k))
-            train = datah.get_node(features_template.format(side, 'train'))[:]
-            train_labels = datah.get_node(labels_template.format(side, 'train'))[:]
-            train_splits = split_3_way(train, train_labels)
-            train_X = train_splits[k]['X']
-            train_y = train_splits[k]['y']
+    for side in sides:
+        for s in ['train', 'valid', 'test']:
+            X[side][s] = datah.get_node(features_template.format(side, s))[:]
+            y[side][s] = datah.get_node(labels_template.format(side, s))[:]
 
-            valid = datah.get_node(features_template.format(side, 'valid'))[:]
-            valid_labels = datah.get_node(labels_template.format(side, 'valid'))[:]
-            valid_splits = split_3_way(valid, valid_labels)
-            valid_X = valid_splits[k]['X']
-            valid_y = valid_splits[k]['y']
+    # Balance MCI classes:
+    for s in ['train', 'valid', 'test']:
+        logging.info('Balancing {} Classes'.format(s))
+        X[s] = {}
+        y[s] = {}
+        X_c = np.concatenate([X['l'][s], X['r'][s]], axis=1)
+        y_c = y['l'][s]
+        inds = balanced_mci_indexes(y_c)
+        X_c = X_c[inds]
+        y_c = y_c[inds]
+        for key, split in split_3_way(X_c, y_c).items():
+            X[s][key] = split['X']
+            y[s][key] = split['y']
 
-            test = datah.get_node(features_template.format(side, 'test'))[:]
-            test_labels = datah.get_node(labels_template.format(side, 'test'))[:]
-            test_splits = split_3_way(test, test_labels)
-            test_X = test_splits[k]['X']
-            test_y = test_splits[k]['y']
 
-            # Concatenate training, validation, and test features/labels into single matrix:
-            X_c = np.concatenate([train_X, valid_X, test_X], axis=0)
-            y_c = np.concatenate(
-                [train_y.reshape(-1, 1), valid_y.reshape(-1, 1), test_y.reshape(-1, 1)], axis=0)
-            X[side] = X_c
+    for key, split in splits.items():
+        # Concatenate training, validation, and test features/labels into single matrix:
+        logging.info('Making {} Split'.format(key))
+        num_train = X['train'][key].shape[0]
+        num_valid = X['valid'][key].shape[0]
+        num_test = X['test'][key].shape[0]
+        X_c = np.concatenate([X['train'][key], X['valid'][key], X['test'][key]], axis=0)
+        y_c = np.concatenate(
+            [y['train'][key].reshape(-1, 1), y['valid'][key].reshape(-1, 1), y['test'][key].reshape(-1, 1)], axis=0)
 
-        make_file('{}{}.h5'.format(target_path, k), train_X.shape[0], valid_X.shape[0], test_X.shape[0], X, y_c)
+        X_l = X_c[:, 0:input_dim['l']]
+        X_r = X_c[:, input_dim['l']:]
+
+        X_ = {}
+        X_['l'] = X_l
+        X_['r'] = X_r
+
+        make_file('{}{}.h5'.format(target_path, key), num_train, num_valid, num_test, X_, y_c)

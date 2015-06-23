@@ -10,6 +10,8 @@ sides = [
     'l',
 ]
 
+input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
+
 def balanced_mci_indexes(y):
     """
     Reduces the number of mci samples to be the same size as the other class of samples.
@@ -18,7 +20,7 @@ def balanced_mci_indexes(y):
     """
     mcinds = np.where(y == 2)[0]
     oinds = np.where(y != 2)[0]
-    reduced_mcinds = mcinds[0: oinds.shape[0]]
+    reduced_mcinds = mcinds[0: mcinds.shape[0] / 2]
     inds = np.concatenate((reduced_mcinds, oinds))
     np.random.shuffle(inds)
     return inds
@@ -66,13 +68,6 @@ def split_3_way(X, y):
     """
     for k, v in splits.items():
         indexes = np.where(y != v['ni'])[0]
-        _X = X[indexes]
-        _y = y[indexes]
-        if 'mci' in k:
-            mci_inds= balanced_mci_indexes(_y)
-            _X = _X[mci_inds]
-            _y = _y[mci_inds]
-        v['X'] = _X
-        v['y'] = v['labelfn'](_y)
-
+        v['X'] = X[indexes]
+        v['y'] = v['labelfn'](y[indexes])
     return splits
