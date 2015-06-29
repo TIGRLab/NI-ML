@@ -14,7 +14,7 @@ input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
 
 def balanced_mci_indexes(y):
     """
-    Reduces the number of mci samples to be the same size as the other class of samples.
+    Reduces the number of mci samples to be half the current set size.
     :param y: Class labels vector for both mci and other class.
     :return: Indexes of mci and other class samples to make a balanced set.
     """
@@ -66,8 +66,8 @@ def split_3_way(X, y):
     :param y: A 3-class (0,1,2) set of labels.
     :return: The splits dictionary defined above, including the X and y matrices for each split.
     """
-    for k, v in splits.items():
-        indexes = np.where(y != v['ni'])[0]
-        v['X'] = X[indexes]
-        v['y'] = v['labelfn'](y[indexes])
+    for name, split in splits.items():
+        indexes = np.where(y != split['ni'])[0]
+        split['X'] = X[indexes]
+        split['y'] = split['labelfn'](y[indexes])
     return splits
