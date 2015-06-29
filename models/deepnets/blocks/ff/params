@@ -1,14 +1,50 @@
 [hyperparams]
-side : r
-max_iter : 50
-base_lr : 0.002475
-train_batch : 16
-valid_batch : 4647
-test_batch : 5855
-W_sd:0.01
+side : l
+max_iter: 1000
+base_lr: 0.00275
+train_batch : 128
+valid_batch : 4828
+test_batch : 1024
+hidden_units: 32
+W_sd:1
 W_mu:0
-W_b:0.01
-dropout_ratio : 0.25
-weight_decay : 0.001
-solver_type: rmsprop
+b_sd:1
+b_mu:0
+dropout_ratio: 0.7
+input_dropout_ratio: 0.2
+weight_decay: 0.0
+max_norm: 100.0
+solver_type: adagrad
+fine_tune: True
 data_file : /projects/francisco/data/fuel/mci_cn.h5
+
+# last r test error: 0.349825650454 (no early stopping, ran for 1000 epochs)
+# file: 2015-06-25-18:13
+# base_lr : 0.00275
+# dropout_ratio : 0.7
+# hidden_units: 32
+# weight_decay : 0.0
+
+# last l test error: 0.393769145012
+# File: 2015-06-29-11:45
+# base_lr : 0.00275
+# hidden_units: 16
+# dropout_ratio : 0.7
+# hidden_units: 16
+# weight_decay : 0.0
+
+
+# Spearmint:
+#Minimum of observed values is 0.327051, at location:
+#                NAME          TYPE       VALUE
+#                ----          ----       -----
+#                hidden_units  int        16
+#                weight_decay  float      0.083696
+#                base_lr       float      0.046306
+#                dropout_ratio  float      0.614755
+
+# To find min job after spearmint has run:
+# $ mongo # starts db cmd line
+# > use spearmint
+# > jobs = db.ff_ljobs # the jobs table
+# > jobs.find().sort({values: {main: 1}}).limit(1)
