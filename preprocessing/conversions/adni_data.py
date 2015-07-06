@@ -10,7 +10,16 @@ sides = [
     'l',
 ]
 
-input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
+structures = {
+    'EC',
+    'HC',
+}
+
+input_dims = {
+    'HC': {'l': 11427, 'r': 10519, 'b': 10519 + 11427},
+    'EC': {'l': 15069, 'r': 14907, 'b': 15069 + 14907},
+}
+
 
 def balanced_mci_indexes(y):
     """
@@ -46,6 +55,12 @@ splits = {
         'ni': 1,
         'labelfn': lambda x: x / 2
     },
+}
+
+class_labels = {
+    'ad': 0,
+    'cn': 1,
+    'mci': 2,
 }
 
 def load_data(source=datafile):
