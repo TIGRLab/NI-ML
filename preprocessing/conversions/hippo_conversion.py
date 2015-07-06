@@ -7,73 +7,13 @@ Usage:
 -s --scaled  scale features to [-1,1] range
 """
 import logging
+
 import numpy as np
-import h5py
 from docopt import docopt
-from fuel.datasets.hdf5 import H5PYDataset
-from adni_data import split_3_way, splits, features_template, labels_template, sides, datafile, load_data, \
-    balanced_mci_indexes, hippo_dim
 
-
-def make_fuel_file(outfile, inda, indb, indc, X, y):
-    # Make the pytables table:
-    f = h5py.File(outfile, mode='w')
-    targets = f.create_dataset('targets', y.shape, dtype='int8')
-    l_features = f.create_dataset('l_features', X['l'].shape, dtype='int8')
-    r_features = f.create_dataset('r_features', X['r'].shape, dtype='int8')
-
-    # Load the data into it:
-    l_features[...] = X['l']
-    r_features[...] = X['r']
-    targets[...] = y
-
-    # Label the axis:
-    targets.dims[0].label = 'sample'
-    targets.dims[1].label = 'class'
-    l_features.dims[0].label = 'sample'
-    l_features.dims[1].label = 'feature'
-    r_features.dims[0].label = 'sample'
-    r_features.dims[1].label = 'feature'
-
-    # Make a "splits" dictionary as required by Fuel
-    split_dict = {
-        'train': {'l_features': (0, inda),
-                  'r_features': (0, inda),
-                  'targets': (0, inda)},
-        'valid': {'l_features': (inda, inda + indb),
-                  'r_features': (inda, inda + indb),
-                  'targets': (inda, inda + indb)},
-        'test': {'l_features': (inda + indb, inda + indb + indc),
-                 'r_features': (inda + indb, inda + indb + indc),
-                 'targets': (inda + indb, inda + indb + indc)},
-    }
-
-    f.attrs['split'] = H5PYDataset.create_split_array(split_dict)
-
-    # Save this new dataset to file
-    f.flush()
-    f.close()
-
-def make_caffe_file(outfile, X, y):
-    """
-    Create a Caffe-format HDf5 data and labels file.
-    :param outfile: A path and filename to write the dataset out to.
-    :param set_name: Name of the dataset (ie. 'left' or 'right')
-    :param X: The features matrix.
-    :param y: The class labels vector.
-    """
-    # Make the pytables table:
-    f = h5py.File(outfile, mode='w')
-    label = f.create_dataset('label', y.shape)
-    set_name = f.create_dataset('features', X.shape)
-
-    # Load the data into it:
-    set_name[...] = X
-    label[...] = y
-
-    # Save this new dataset to file
-    f.flush()
-    f.close()
+from adni_data import split_3_way, splits, features_template, labels_template, sides, load_data, \
+    balanced_mci_indexes, input_dims
+from preprocessing.conversions.adni_data import make_caffe_file, make_lr_fuel_file
 
 
 if __name__ == "__main__":
@@ -95,6 +35,8 @@ if __name__ == "__main__":
         'r': {},
         'b': {}
     }
+
+    hippo_dim = input_dims['HC']
 
     # Load all of the existing data sets:
     for side in sides:
@@ -139,7 +81,7 @@ if __name__ == "__main__":
             X_['l'] = X_c[:, 0:hippo_dim['l']]
             X_['r'] = X_c[:, hippo_dim['l']:]
 
-            make_fuel_file('{}{}.h5'.format(target_path, name), num_train, num_valid, num_test, X_, y_c)
+            make_lr_fuel_file('{}{}.h5'.format(target_path, name), num_train, num_valid, num_test, X_, y_c)
 
         if caffe:
             for s in ['train', 'valid', 'test']:
