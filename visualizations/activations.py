@@ -22,7 +22,7 @@ def visualize_activations(cg, layer_output, r_features, l_features, labels):
     return proj
 
 data_file = '/projects/francisco/data/fuel/mci_cn.h5'
-save_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/pre_trained_lrnet/models/2015-06-25-11:56'
+save_file = '/projects/francisco/repositories/NI-ML/models/deepnets/blocks/pre_trained_lrnet/models/2015-06-29-15:45'
 test = H5PYDataset(data_file, which_set='test')
 l_x = tensor.matrix('l_features')
 r_x = tensor.matrix('r_features')
@@ -115,16 +115,16 @@ layers_list = [
     outputs[11]
 ]
 
-# projections = []
-# for layer in layers_list:
-#     print 'Visualizing {}'.format(layer.name)
-#     projections.append(visualize_activations(cg, layer, r_features, l_features, labels))
-#
-# # Visualize the final 2-d layers, pre and post normalization:
-# for layer in [outputs[-4], outputs[-3]]:
-#     plt.cla()
-#     act_fn = function(cg.inputs[1:], layer)
-#     activations = act_fn(r_features, l_features)
-#     projections.append(activations)
-#     plt.scatter(activations[:, 0], activations[:, 1], c=labels)
-#     plt.savefig('./{}_layer.png'.format(layer.name))
+projections = []
+for layer in layers_list:
+    print 'Visualizing {}'.format(layer.name)
+    projections.append(visualize_activations(cg, layer, r_features, l_features, labels))
+
+# Visualize the final 2-d layers, pre and post normalization:
+for layer in [outputs[-4], outputs[-3]]:
+    plt.cla()
+    act_fn = function(cg.inputs[1:], layer)
+    activations = act_fn(r_features, l_features)
+    projections.append(activations)
+    plt.scatter(activations[:, 0], activations[:, 1], c=labels)
+    plt.savefig('./{}_layer.png'.format(layer.name))
