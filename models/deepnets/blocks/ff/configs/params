@@ -1,11 +1,12 @@
 [hyperparams]
-side : l
-max_iter: 1000
+side : r
+max_iter: 500
 base_lr: 0.00275
 train_batch : 128
 valid_batch : 4828
 test_batch : 1024
 hidden_units: 32
+# sd = m ^ (-1/2), where m is input connections
 W_sd:1
 W_mu:0
 b_sd:1
@@ -13,26 +14,10 @@ b_mu:0
 dropout_ratio: 0.7
 input_dropout_ratio: 0.2
 weight_decay: 0.0
-max_norm: 100.0
+max_norm: 1000.0
 solver_type: adagrad
 fine_tune: True
-data_file : /projects/francisco/data/fuel/mci_cn.h5
-
-# last r test error: 0.349825650454 (no early stopping, ran for 1000 epochs)
-# file: 2015-06-25-18:13
-# base_lr : 0.00275
-# dropout_ratio : 0.7
-# hidden_units: 32
-# weight_decay : 0.0
-
-# last l test error: 0.393769145012
-# File: 2015-06-29-11:45
-# base_lr : 0.00275
-# hidden_units: 16
-# dropout_ratio : 0.7
-# hidden_units: 16
-# weight_decay : 0.0
-
+data_file : /projects/francisco/data/fuel/EC/r_EC_mci_cn.h5
 
 # Spearmint:
 #Minimum of observed values is 0.327051, at location:
@@ -47,4 +32,4 @@ data_file : /projects/francisco/data/fuel/mci_cn.h5
 # $ mongo # starts db cmd line
 # > use spearmint
 # > jobs = db.ff_ljobs # the jobs table
-# > jobs.find().sort({values: {main: 1}}).limit(1)
+# > jobs.find().sort({values: {main: 1}}).limit(1).pretty()

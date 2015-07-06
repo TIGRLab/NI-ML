@@ -1,14 +1,5 @@
-"""
-Train a feed-forward net using the parameters defined in config_file
-
-Usage:
-    ffnet.py <config_file>
-"""
-
-import pprint
 import ConfigParser
 import datetime
-from docopt import docopt
 from fuel.schemes import SequentialScheme, ShuffledScheme
 from fuel.streams import DataStream
 from fuel.transformers import Flatten
@@ -38,22 +29,10 @@ from blocks.monitoring import aggregation
 from blocks.roles import WEIGHT, INPUT
 from blocks.theano_expressions import l2_norm
 
-input_dims = {
-    'HC': {'l': 11427, 'r': 10519, 'b': 10519 + 11427},
-    'EC': {'l': 15069, 'r': 14907, 'b': 15069 + 14907},
-}
 
-
-def main(job_id, params, config_file):
+def main(job_id, params):
     config = ConfigParser.ConfigParser()
-    config.readfp(open('./configs/{}'.format(config_file)))
-
-    pr = pprint.PrettyPrinter(indent=4)
-    pr.pprint(config)
-
-    net_name  =  config.get('hyperparams', 'net_name', 'adni')
-    struct_name = net_name.split('_')[0]
-
+    config.readfp(open('./params'))
     max_epoch = int(config.get('hyperparams', 'max_iter', 100))
     base_lr = float(config.get('hyperparams', 'base_lr', 0.01))
     train_batch = int(config.get('hyperparams', 'train_batch', 256))
@@ -74,8 +53,6 @@ def main(job_id, params, config_file):
     data_file = config.get('hyperparams', 'data_file')
     side = config.get('hyperparams', 'side', 'b')
 
-    input_dim = input_dims[struct_name]
-
     # Spearmint optimization parameters:
     if params:
         base_lr = float(params['base_lr'][0])
@@ -88,7 +65,7 @@ def main(job_id, params, config_file):
     else:
         solver_type = CompositeRule([RMSProp(learning_rate=base_lr), VariableClipping(threshold=max_norm)])
 
-
+    input_dim = {'l': 11427, 'r': 10519, 'b': 10519 + 11427}
     data_file = config.get('hyperparams', 'data_file')
 
     if 'b' in side:
@@ -207,16 +184,16 @@ def main(job_id, params, config_file):
         after_training=True)
 
 
-    plotting = Plot('{}_{}'.format(net_name, side),
+    plotting = Plot('AdniNet_{}'.format(side),
                     channels=[
-                        ['dropout_entropy'],
+                        ['dropout_entropy', 'validation_entropy'],
                         ['error', 'validation_error'],
                     ],
                     after_batch=False)
 
     # Checkpoint class used to save model and log:
     stamp = datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d-%H:%M')
-    checkpoint = Checkpoint('./models/{}/{}/{}'.format(struct_name, side, stamp),
+    checkpoint = Checkpoint('./models/{}net/{}'.format(side, stamp),
                             save_separately=['model', 'log'],
                             every_n_epochs=1)
 
@@ -252,7 +229,5 @@ def main(job_id, params, config_file):
     return spearmint_loss
 
 if __name__ == "__main__":
-    arguments = docopt(__doc__)
-    config_file = arguments['<config_file>']
     params = {}
-    main(0, params, config_file)
+    main(0, params)

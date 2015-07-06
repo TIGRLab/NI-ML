@@ -1,0 +1,15 @@
+[hyperparams]
+side : r
+max_iter : 10000
+base_lr : 0.001
+train_batch : 128
+valid_batch : 1
+test_batch : 1
+W_sd:0.01
+W_mu:0
+W_b:0.01
+dropout_ratio : 0.5
+input_dropout_ratio: 0.2
+weight_decay : 0.0000
+solver_type: adagrad
+data_file : /projects/francisco/data/fuel/mci_cn.h5

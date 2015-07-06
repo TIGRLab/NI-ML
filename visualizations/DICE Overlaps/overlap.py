@@ -1,6 +1,14 @@
 import numpy as np
-from scipy.spatial.distance import dice
+from scipy.spatial.distance import cdist
 from adni_data import load_data
+from pylab import pcolor, show, colorbar, xticks, yticks
+
+def dice_plot(R):
+    pcolor(R)
+    colorbar()
+    yticks(np.arange(0.5,10.5),range(0,10))
+    xticks(np.arange(0.5,10.5),range(0,10))
+    show()
 
 data = load_data()
 
@@ -19,10 +27,7 @@ cn_features = features[cn_inds, :]
 
 scores = {}
 
-for i, mci in enumerate(mci_features):
-    for j, cn in enumerate(cn_features):
-        score = dice(mci, cn)
-        scores[(i, j)] = score
+D = cdist(mci_features, cn_features, 'dice')
 
 
 
