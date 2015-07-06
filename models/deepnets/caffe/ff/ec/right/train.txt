@@ -1,0 +1,1 @@
+/projects/francisco/data/caffe/standardized/EC_r_ad_cn_train.h5

@@ -1,0 +1,262 @@
+name: "AdniNet"
+
+###################################################
+# Data Layer
+###################################################
+
+# Training Data
+layer {
+  name: "features"
+  type: "HDF5Data"
+  top: "features"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  hdf5_data_param {
+    source: "train.txt"
+    batch_size: 256
+  }
+}
+
+# Test Data
+layer {
+  name: "features"
+  type: "HDF5Data"
+  top: "features"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  hdf5_data_param {
+    source: "test.txt"
+    batch_size: 256
+  }
+}
+
+###################################3
+# Feed forward layers
+#
+layer {
+  name: "ff1"
+  type: "InnerProduct"
+  bottom: "concatenator"
+  top: "ff1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1028
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+layer {
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ff1"
+  top: "ff1"
+}
+layer {
+  name: "drop1"
+  type: "Dropout"
+  bottom: "ff1"
+  top: "ff1"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+
+layer {
+  name: "ff2"
+  type: "InnerProduct"
+  bottom: "ff1"
+  top: "ff2"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 1028
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+layer {
+  name: "relu2"
+  type: "ReLU"
+  bottom: "ff2"
+  top: "ff2"
+}
+
+layer {
+  name: "drop2"
+  type: "Dropout"
+  bottom: "ff2"
+  top: "ff2"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+
+layer {
+  name: "ff3"
+  type: "InnerProduct"
+  bottom: "ff2"
+  top: "ff3"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+layer {
+  name: "relu3"
+  type: "ReLU"
+  bottom: "ff3"
+  top: "ff3"
+}
+layer {
+  name: "drop3"
+  type: "Dropout"
+  bottom: "ff3"
+  top: "ff3"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+
+layer {
+  name: "ff4"
+  type: "InnerProduct"
+  bottom: "ff3"
+  top: "ff4"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+layer {
+  name: "relu4"
+  type: "ReLU"
+  bottom: "ff4"
+  top: "ff4"
+}
+
+layer {
+  name: "drop4"
+  type: "Dropout"
+  bottom: "ff4"
+  top: "ff4"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+
+
+layer {
+  name: "ff5"
+  type: "InnerProduct"
+  bottom: "ff4"
+  top: "ff5"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  inner_product_param {
+    num_output: 2
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+###################################################
+# Softmax Classification
+###################################################
+
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "ff5"
+  bottom: "label"
+  top: "loss"
+}
+
+layer {
+  name: "accuracy"
+  type: "Accuracy"
+  bottom: "ff5"
+  bottom: "label"
+  top: "accuracy"
+  include {
+    phase: TEST
+  }
+}
