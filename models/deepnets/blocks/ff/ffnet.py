@@ -2,7 +2,7 @@
 Train a feed-forward net using the parameters defined in config_file
 
 Usage:
-    ffnet.py <config_file>
+    ffnet.py [<config_file>]
 """
 
 import pprint
@@ -44,7 +44,7 @@ input_dims = {
 }
 
 
-def main(job_id, params, config_file):
+def main(job_id, params, config_file='params.ec'):
     config = ConfigParser.ConfigParser()
     config.readfp(open('./configs/{}'.format(config_file)))
 
@@ -220,10 +220,12 @@ def main(job_id, params, config_file):
                             save_separately=['model', 'log'],
                             every_n_epochs=1)
 
-    # Home-brewed class for early stopping when we detect we have started to overfit
+    # Home-brewed class for early stopping when we detect we have started to overfit:
+    # And by that I mean if the means of the val error and training error over the
+    # previous 'epochs' is greater than the 'threshold', we are overfitting.
     early_stopper = FinishIfOverfitting(error_name='error',
                                         validation_name='validation_error',
-                                        threshold=0.1,
+                                        threshold=0.05,
                                         epochs=5,
                                         burn_in=100)
 
@@ -253,6 +255,10 @@ def main(job_id, params, config_file):
 
 if __name__ == "__main__":
     arguments = docopt(__doc__)
-    config_file = arguments['<config_file>']
+
+    if arguments['<config_file>']:
+        config_file = arguments['<config_file>']
+    else:
+        config_file = 'params.ec'
     params = {}
     main(0, params, config_file)

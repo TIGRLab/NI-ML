@@ -6,14 +6,14 @@ base_lr: 0.000775
 train_batch : 128
 valid_batch : 4828
 test_batch : 1024
-hidden_units: 16
+hidden_units: 32
 # sd = m ^ (-1/2), where m is input connections
 W_sd:1
 W_mu:0
 b_sd:1
 b_mu:0
 dropout_ratio: 0.7
-input_dropout_ratio: 0.5
+input_dropout_ratio: 0.2
 weight_decay: 0.0
 max_norm: 1000.0
 solver_type: adagrad
