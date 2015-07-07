@@ -90,7 +90,7 @@ def split_3_way(X, y):
     return splits
 
 
-def make_caffe_file(outfile, X, y):
+def make_caffe_file(outfile, X, y, feature_name='features'):
     """
     Create a Caffe-format HDf5 data and labels file.
     :param outfile: A path and filename to write the dataset out to.
@@ -101,7 +101,7 @@ def make_caffe_file(outfile, X, y):
     # Make the pytables table:
     f = h5py.File(outfile, mode='w')
     label = f.create_dataset('label', y.shape)
-    set_name = f.create_dataset('features', X.shape)
+    set_name = f.create_dataset(feature_name, X.shape)
 
     # Load the data into it:
     set_name[...] = X
