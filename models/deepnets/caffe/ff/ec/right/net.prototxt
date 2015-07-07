@@ -1,4 +1,4 @@
-name: "EC_l_net"
+name: "EC_r_net"
 
 ###################################################
 # Data Layer
@@ -34,6 +34,7 @@ layer {
   }
 }
 
+
 ###################################3
 # Feed forward layers
 #
@@ -58,7 +59,7 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -101,7 +102,7 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -119,15 +120,15 @@ layer {
   bottom: "ff2"
   top: "ff2"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.2
   }
 }
 
 layer {
-  name: "ff3"
+  name: "clas"
   type: "InnerProduct"
   bottom: "ff2"
-  top: "ff3"
+  top: "clas"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -144,7 +145,7 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -156,7 +157,7 @@ layer {
 layer {
   name: "loss"
   type: "SoftmaxWithLoss"
-  bottom: "ff3"
+  bottom: "clas"
   bottom: "label"
   top: "loss"
 }
@@ -164,7 +165,7 @@ layer {
 layer {
   name: "accuracy"
   type: "Accuracy"
-  bottom: "ff3"
+  bottom: "clas"
   bottom: "label"
   top: "accuracy"
   include {

@@ -1,4 +1,4 @@
-name: "AdniNet"
+name: "HC_r_net"
 
 ###################################################
 # Data Layer
@@ -34,13 +34,14 @@ layer {
   }
 }
 
+
 ###################################3
 # Feed forward layers
 #
 layer {
   name: "ff1"
   type: "InnerProduct"
-  bottom: "concatenator"
+  bottom: "features"
   top: "ff1"
   param {
     lr_mult: 1
@@ -51,14 +52,14 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1028
+    num_output: 32
     weight_filler {
       type: "gaussian"
       std: 0.01
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -94,14 +95,14 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 1028
+    num_output: 32
     weight_filler {
       type: "gaussian"
       std: 0.01
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -123,100 +124,11 @@ layer {
   }
 }
 
-
 layer {
-  name: "ff3"
+  name: "clas"
   type: "InnerProduct"
   bottom: "ff2"
-  top: "ff3"
-  param {
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
-  inner_product_param {
-    num_output: 512
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-
-layer {
-  name: "relu3"
-  type: "ReLU"
-  bottom: "ff3"
-  top: "ff3"
-}
-layer {
-  name: "drop3"
-  type: "Dropout"
-  bottom: "ff3"
-  top: "ff3"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
-}
-
-
-layer {
-  name: "ff4"
-  type: "InnerProduct"
-  bottom: "ff3"
-  top: "ff4"
-  param {
-    lr_mult: 1
-    decay_mult: 1
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
-  inner_product_param {
-    num_output: 512
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-      value: 0
-    }
-  }
-}
-
-layer {
-  name: "relu4"
-  type: "ReLU"
-  bottom: "ff4"
-  top: "ff4"
-}
-
-layer {
-  name: "drop4"
-  type: "Dropout"
-  bottom: "ff4"
-  top: "ff4"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
-}
-
-
-
-layer {
-  name: "ff5"
-  type: "InnerProduct"
-  bottom: "ff4"
-  top: "ff5"
+  top: "clas"
   param {
     lr_mult: 1
     decay_mult: 1
@@ -233,7 +145,7 @@ layer {
     }
     bias_filler {
       type: "constant"
-      value: 0
+      value: 0.1
     }
   }
 }
@@ -245,7 +157,7 @@ layer {
 layer {
   name: "loss"
   type: "SoftmaxWithLoss"
-  bottom: "ff5"
+  bottom: "clas"
   bottom: "label"
   top: "loss"
 }
@@ -253,7 +165,7 @@ layer {
 layer {
   name: "accuracy"
   type: "Accuracy"
-  bottom: "ff5"
+  bottom: "clas"
   bottom: "label"
   top: "accuracy"
   include {
