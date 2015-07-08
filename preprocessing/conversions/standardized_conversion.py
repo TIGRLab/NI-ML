@@ -2,7 +2,7 @@
 Converts dataset extracted from ADNI to a format that is usable for python's blocks/theano neural networks.
 
 Usage:
-    standardized_conversion.py (fuel|caffe) [--scaled] <target_path>
+    standardized_conversion.py (fuel|caffe) [--scaled] [--normalized] [--targets] <target_path>
 
 -s --scaled  scale features to [-1,1] range
 -n --normalized  normalize features to mean 0, sd 1
@@ -46,12 +46,13 @@ y = {}
 if __name__ == "__main__":
     arguments = docopt(__doc__)
     target_path = arguments['<target_path>']
-    rescale = arguments['--scaled']
-    normalize = arguments['--normalized']
-    scale_targets = arguments['--targets']
     logging.basicConfig(level=logging.DEBUG)
     fuel = arguments['fuel']
     caffe = arguments['caffe']
+
+    rescale = arguments['--scaled']
+    normalize = arguments['--normalized']
+    scale_targets = arguments['--targets']
 
     # Labels:
     classes_data = tb.open_file(source_path_labels, mode='r')
@@ -74,7 +75,7 @@ if __name__ == "__main__":
                 X[structure][side][s] = X_c
                 if caffe:
                     target_name = '{}{}_{}_ad_cn_{}.h5'.format(target_path, structure, side.lower(), s)
-                    make_caffe_file(target_name, X[structure][side][s], y[s], '{}_features'.format(structure.lower()))
+                    make_caffe_file(target_name, X[structure][side][s], y[s], '{}_{}_features'.format(side.lower(), structure.lower()))
 
             if fuel:
                 num_train = X[structure][side]['train'].shape[0]
