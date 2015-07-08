@@ -6,15 +6,15 @@ name: "combined_net"
 
 # Training Data
 layer {
-  name: "ec_features"
+  name: "l_hc_features"
   type: "HDF5Data"
-  top: "ec_features"
+  top: "l_hc_features"
   top: "label"
   include {
     phase: TRAIN
   }
   hdf5_data_param {
-    source: "ec_train.txt"
+    source: "l_hc_train.txt"
     shuffle: true
     batch_size: 256
   }
@@ -22,29 +22,29 @@ layer {
 
 # Test Data
 layer {
-  name: "ec_features"
+  name: "l_hc_features"
   type: "HDF5Data"
-  top: "ec_features"
+  top: "l_hc_features"
   top: "label"
   include {
     phase: TEST
   }
   hdf5_data_param {
-    source: "ec_test.txt"
+    source: "l_hc_test.txt"
     batch_size: 256
   }
 }
 
 # Training Data
 layer {
-  name: "hc_features"
+  name: "r_hc_features"
   type: "HDF5Data"
-  top: "hc_features"
+  top: "r_hc_features"
   include {
     phase: TRAIN
   }
   hdf5_data_param {
-    source: "hc_train.txt"
+    source: "r_hc_train.txt"
     shuffle: true
     batch_size: 256
   }
@@ -52,14 +52,14 @@ layer {
 
 # Test Data
 layer {
-  name: "hc_features"
+  name: "r_hc_features"
   type: "HDF5Data"
-  top: "hc_features"
+  top: "r_hc_features"
   include {
     phase: TEST
   }
   hdf5_data_param {
-    source: "hc_test.txt"
+    source: "r_hc_test.txt"
     batch_size: 256
   }
 }
@@ -72,7 +72,7 @@ layer {
 layer {
   name: "ec_ff1"
   type: "InnerProduct"
-  bottom: "ec_features"
+  bottom: "l_hc_features"
   top: "ec_ff1"
   param {
     lr_mult: 2
@@ -142,14 +142,14 @@ layer {
   bottom: "ec_ff2"
   top: "ec_ff2"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.8
   }
 }
 
 layer {
   name: "hc_ff1"
   type: "InnerProduct"
-  bottom: "hc_features"
+  bottom: "r_hc_features"
   top: "hc_ff1"
   param {
     lr_mult: 2
@@ -219,7 +219,7 @@ layer {
   bottom: "hc_ff2"
   top: "hc_ff2"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.8
   }
 }
 
@@ -270,7 +270,7 @@ layer {
   bottom: "ff3"
   top: "ff3"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.8
   }
 }
 
@@ -310,7 +310,7 @@ layer {
   bottom: "ff4"
   top: "ff4"
   dropout_param {
-    dropout_ratio: 0.5
+    dropout_ratio: 0.8
   }
 }
 

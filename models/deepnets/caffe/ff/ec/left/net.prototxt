@@ -6,9 +6,9 @@ name: "EC_l_net"
 
 # Training Data
 layer {
-  name: "features"
+  name: "l_ec_features"
   type: "HDF5Data"
-  top: "features"
+  top: "l_ec_features"
   top: "label"
   include {
     phase: TRAIN
@@ -21,9 +21,9 @@ layer {
 
 # Test Data
 layer {
-  name: "features"
+  name: "l_ec_features"
   type: "HDF5Data"
-  top: "features"
+  top: "l_ec_features"
   top: "label"
   include {
     phase: TEST
@@ -41,7 +41,7 @@ layer {
 layer {
   name: "ff1"
   type: "InnerProduct"
-  bottom: "features"
+  bottom: "l_ec_features"
   top: "ff1"
   param {
     lr_mult: 1
