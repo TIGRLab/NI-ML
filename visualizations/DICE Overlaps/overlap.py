@@ -1,27 +1,16 @@
 '''
-Run this script from the NI-ML repository root folder so it finds the adni_data dependency.
-
-Last run on *test* sets produced:
-mci_cn:
-Max Dice (least similar): 0.586656322731
-Min Dice (most similar): 0.165756630265
-
-ad_cn:
-Max Dice (least similar): 0.581625604421
-Min Dice (most similar): 0.163028021748
-
-ad_mci:
-Max Dice (least similar): 0.585340037047
-Min Dice (most similar): 0.162198649952
+Script to compute various DICE scores on:
+a) Pairwise DICE on features in class 0 vs features in class 1
+b) DICE distance matrix on features in both classes separately
 '''
 
 import logging
 import os
-from matplotlib.pyplot import savefig, cla
+import tables as tb
 import numpy as np
-from scipy.spatial.distance import cdist
+from matplotlib.pyplot import savefig, cla
+from scipy.spatial.distance import cdist, pdist
 from pylab import pcolor, show, colorbar, xticks, yticks
-from preprocessing.conversions.adni_data import load_data, class_labels, splits
 
 target_folder = './visualizations/DICE Overlaps'
 
@@ -40,31 +29,55 @@ def dice_plot(M, name):
 
     savefig('{}.png'.format(name))
 
+def report(D, score):
+    """
+    Just prints stuff.
+    :param D:
+    :return:
+    """
+    print 'Max {} (least similar): {}'.format(score, np.max(D))
+    print 'Mean {} (mean similarity): {}'.format(score, np.mean(D))
+    print 'Min {} (most similar): {}'.format(score, np.min(D))
 
-data = load_data()
 
-l_features = data.get_node('/l_test_data')[:]
-r_features = data.get_node('/r_test_data')[:]
-labels = data.get_node('/r_test_classes')[:]
+def compute_dice_scores(features, inds0, inds1):
+    """
+    Compute and report dem scores.
+    :param features:
+    :param inds0:
+    :param inds1:
+    :return:
+    """
+    g0 = features[inds0,:]
+    g1 = features[inds1,:]
+    D = cdist(g0, g1, 'dice')
+    report(D, '0 vs 1 DICE')
+    D0=pdist(g0, 'dice')
+    report(D0, '0 distance')
+    D1=pdist(g1, 'dice')
+    report(D1, '1 distance')
+    return D, D0, D1
 
-features = np.concatenate((l_features, r_features), axis=1)
 
-sets = {}
+source_path = '/scratch/nikhil/tmp/standardized_input_data_{}_{}_mini.h5'
+source_path_labels = '/scratch/nikhil/tmp/standardized_input_classes_mini.h5'
 
-for group, label in class_labels.items():
-    inds = np.where(labels == label)[0]
-    sets[group] = features[inds, :]
+labels_data = tb.open_file(source_path_labels, mode='r')
 
-for split in splits.keys():
-    logging.info('Scoring DICE for {} sets'.format(split))
-    g1, g2 = split.split('_')
-    g1_features = sets[g1]
-    g2_features = sets[g2]
-    D = cdist(g1_features, g2_features, 'dice')
-    print 'Max Dice (least similar): {}'.format(np.max(D))
-    print 'Min Dice (most similar): {}'.format(np.min(D))
-    dice_plot(D, split)
+labels = labels_data.get_node('/valid_classes')[:]
+inds0 = np.where(labels == 0)[0]
+inds1 = np.where(labels == 1)[0]
 
+scores = {}
+
+for side in ['L', 'R']:
+    for structure in ['HC', 'EC']:
+        print 'Computing DICE overlaps for {}_{}:'.format(side, structure)
+        print 'This might take a minute...'
+        data = tb.open_file(source_path.format(structure, side), 'r')
+        features = data.get_node('/valid_data')[:]
+        D, D0, D1 = compute_dice_scores(features, inds0, inds1)
+        scores['{}_{}'.format(side, structure)] = (D, D0, D1)
 
 
 
