@@ -206,166 +206,6 @@ layer {
   }
 }
 
-#
-# EC L
-#
-layer {
-  name: "l_ec_ff1"
-  type: "InnerProduct"
-  bottom: "l_ec_features"
-  top: "l_ec_ff1"
-  param {
-    lr_mult: 2
-    decay_mult: 1
-  }
-  inner_product_param {
-    num_output: 32
-    weight_filler {
-      type: "gaussian"
-      std: 0.008
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-}
-
-layer {
-  name: "l_ec_relu1"
-  type: "ReLU"
-  bottom: "l_ec_ff1"
-  top: "l_ec_ff1"
-}
-layer {
-  name: "l_ec_drop1"
-  type: "Dropout"
-  bottom: "l_ec_ff1"
-  top: "l_ec_ff1"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
-}
-
-layer {
-  name: "l_ec_ff2"
-  type: "InnerProduct"
-  bottom: "l_ec_ff1"
-  top: "l_ec_ff2"
-  param {
-    lr_mult: 2
-    decay_mult: 1
-  }
-  inner_product_param {
-    num_output: 32
-    weight_filler {
-      type: "gaussian"
-      std: 0.177
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-}
-
-layer {
-  name: "l_ec_relu2"
-  type: "ReLU"
-  bottom: "l_ec_ff2"
-  top: "l_ec_ff2"
-}
-
-layer {
-  name: "l_ec_drop2"
-  type: "Dropout"
-  bottom: "l_ec_ff2"
-  top: "l_ec_ff2"
-  dropout_param {
-    dropout_ratio: 0.6
-  }
-}
-
-
-#
-# EC R
-#
-layer {
-  name: "r_ec_ff1"
-  type: "InnerProduct"
-  bottom: "r_ec_features"
-  top: "r_ec_ff1"
-  param {
-    lr_mult: 2
-    decay_mult: 1
-  }
-  inner_product_param {
-    num_output: 32
-    weight_filler {
-      type: "gaussian"
-      std: 0.008
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-}
-
-layer {
-  name: "r_ec_relu1"
-  type: "ReLU"
-  bottom: "r_ec_ff1"
-  top: "r_ec_ff1"
-}
-layer {
-  name: "r_ec_drop1"
-  type: "Dropout"
-  bottom: "r_ec_ff1"
-  top: "r_ec_ff1"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
-}
-
-layer {
-  name: "r_ec_ff2"
-  type: "InnerProduct"
-  bottom: "r_ec_ff1"
-  top: "r_ec_ff2"
-  param {
-    lr_mult: 2
-    decay_mult: 1
-  }
-  inner_product_param {
-    num_output: 32
-    weight_filler {
-      type: "gaussian"
-      std: 0.177
-    }
-    bias_filler {
-      type: "constant"
-      value: 0.1
-    }
-  }
-}
-
-layer {
-  name: "r_ec_relu2"
-  type: "ReLU"
-  bottom: "r_ec_ff2"
-  top: "r_ec_ff2"
-}
-
-layer {
-  name: "r_ec_drop2"
-  type: "Dropout"
-  bottom: "r_ec_ff2"
-  top: "r_ec_ff2"
-  dropout_param {
-    dropout_ratio: 0.6
-  }
-}
 
 #
 # Combined Layers:
@@ -375,8 +215,6 @@ layer {
   type: "Concat"
   bottom: "r_hc_ff2"
   bottom: "l_hc_ff2"
-  bottom: "r_ec_ff2"
-  bottom: "l_ec_ff2"
   top: "concatenator"
   concat_param {
     axis: 1
@@ -393,7 +231,7 @@ layer {
     decay_mult: 1
   }
   inner_product_param {
-    num_output: 32
+    num_output: 16
     weight_filler {
       type: "gaussian"
       std: 0.177
@@ -433,7 +271,7 @@ layer {
     decay_mult: 1
   }
   inner_product_param {
-    num_output: 32
+    num_output: 16
     weight_filler {
       type: "gaussian"
       std: 0.177
