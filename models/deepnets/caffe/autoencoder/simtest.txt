@@ -1,0 +1,1 @@
+/projects/francisco/data/caffe/standardized/mci_cn_valid.h5
