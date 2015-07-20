@@ -50,7 +50,7 @@ layer {
   bottom: "l_hc_features"
   top: "l_hc_ff1"
   param {
-    lr_mult: 2
+    lr_mult: 1
     decay_mult: 1
   }
   inner_product_param {
@@ -88,7 +88,7 @@ layer {
   bottom: "l_hc_ff1"
   top: "l_hc_ff2"
   param {
-    lr_mult: 2
+    lr_mult: 1
     decay_mult: 1
   }
   inner_product_param {
@@ -130,7 +130,7 @@ layer {
   bottom: "r_hc_features"
   top: "r_hc_ff1"
   param {
-    lr_mult: 2
+    lr_mult: 1
     decay_mult: 1
   }
   inner_product_param {
@@ -168,7 +168,7 @@ layer {
   bottom: "r_hc_ff1"
   top: "r_hc_ff2"
   param {
-    lr_mult: 2
+    lr_mult: 1
     decay_mult: 1
   }
   inner_product_param {
@@ -222,7 +222,7 @@ layer {
   bottom: "concatenator"
   top: "ff3"
   param {
-    lr_mult: 1
+    lr_mult: 10
     decay_mult: 1
   }
   inner_product_param {
@@ -262,7 +262,7 @@ layer {
   bottom: "ff3"
   top: "ff4"
   param {
-    lr_mult: 1
+    lr_mult: 10
     decay_mult: 1
   }
   inner_product_param {
