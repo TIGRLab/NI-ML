@@ -1,1 +1,1 @@
-/projects/francisco/data/caffe/standardized/EC_l_ad_cn_valid.h5
+/projects/francisco/data/caffe/standardized/combined/ad_cn_valid.h5

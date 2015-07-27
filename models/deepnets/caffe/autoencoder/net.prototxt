@@ -1,4 +1,4 @@
-name: "EC_l_net"
+name: "AutoEncoder"
 
 ###################################################
 # Data Layer
@@ -6,168 +6,292 @@ name: "EC_l_net"
 
 # Training Data
 layer {
-  name: "l_ec_features"
+  name: "r_hc_features"
   type: "HDF5Data"
-  top: "l_ec_features"
-  top: "label"
+  top: "r_hc_features"
+  #top: "label"
   include {
     phase: TRAIN
   }
   hdf5_data_param {
     source: "train.txt"
-    batch_size: 256
+    batch_size: 128
+    shuffle: true
   }
+  #transform_param {
+  #  mean_value: 0.21529174
+  #}
 }
 
 # Test Data
 layer {
-  name: "l_ec_features"
+  name: "r_hc_features"
   type: "HDF5Data"
-  top: "l_ec_features"
-  top: "label"
+  top: "r_hc_features"
+  #top: "label"
   include {
     phase: TEST
   }
   hdf5_data_param {
     source: "test.txt"
-    batch_size: 256
+    batch_size: 128
+    shuffle: true
   }
+  #transform_param {
+  #  mean_value: 0.21529174
+  #}
 }
 
 
-###################################3
-# Feed forward layers
-#
+###################################
+# Encoding Layers
+
 layer {
-  name: "ff1"
+  name: "encoder1"
   type: "InnerProduct"
-  bottom: "l_ec_features"
-  top: "ff1"
+  bottom: "r_hc_features"
+  top: "encoder1"
   param {
     lr_mult: 1
     decay_mult: 1
   }
-  param {
-    lr_mult: 2
-    decay_mult: 0
-  }
   inner_product_param {
-    num_output: 32
+    num_output: 1024
     weight_filler {
       type: "gaussian"
       std: 0.01
     }
     bias_filler {
       type: "constant"
-      value: 0.1
+      value: 0
     }
   }
 }
-
 layer {
-  name: "relu1"
-  type: "ReLU"
-  bottom: "ff1"
-  top: "ff1"
-}
-layer {
-  name: "drop1"
-  type: "Dropout"
-  bottom: "ff1"
-  top: "ff1"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
+  name: "enc_Sigmoid1"
+  type: "Sigmoid"
+  bottom: "encoder1"
+  top: "encoder1"
 }
 
+
 layer {
-  name: "ff2"
+  name: "encoder2"
   type: "InnerProduct"
-  bottom: "ff1"
-  top: "ff2"
+  bottom: "encoder1"
+  top: "encoder2"
   param {
-    lr_mult: 1
+    lr_mult: 0.32
     decay_mult: 1
   }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "gaussian"
+      std: 0.03125
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "enc_Sigmoid2"
+  type: "Sigmoid"
+  bottom: "encoder2"
+  top: "encoder2"
+}
+
+layer {
+  name: "encoder3"
+  type: "InnerProduct"
+  bottom: "encoder2"
+  top: "encoder3"
   param {
-    lr_mult: 2
-    decay_mult: 0
+    lr_mult: 0.22
+    decay_mult: 1
   }
   inner_product_param {
     num_output: 32
     weight_filler {
       type: "gaussian"
-      std: 0.01
+      std: 0.044
     }
     bias_filler {
       type: "constant"
-      value: 0.1
+      value: 0
     }
   }
 }
-
 layer {
-  name: "relu2"
-  type: "ReLU"
-  bottom: "ff2"
-  top: "ff2"
+  name: "enc_Sigmoid3"
+  type: "Sigmoid"
+  bottom: "encoder3"
+  top: "encoder3"
 }
 
-layer {
-  name: "drop2"
-  type: "Dropout"
-  bottom: "ff2"
-  top: "ff2"
-  dropout_param {
-    dropout_ratio: 0.2
-  }
-}
+
+###################################
+# Code Layer
 
 layer {
-  name: "clas"
+  name: "code"
   type: "InnerProduct"
-  bottom: "ff2"
-  top: "clas"
+  bottom: "encoder3"
+  top: "code"
   param {
-    lr_mult: 1
+    lr_mult: 0.056
     decay_mult: 1
-  }
-  param {
-    lr_mult: 2
-    decay_mult: 0
   }
   inner_product_param {
     num_output: 2
     weight_filler {
       type: "gaussian"
-      std: 0.01
+      std: 0.176
     }
     bias_filler {
       type: "constant"
-      value: 0.1
+      value: 0
     }
   }
 }
 
+###################################
+# Decoding Layers
+###################################
+layer {
+  name: "decoder1"
+  type: "InnerProduct"
+  bottom: "code"
+  top: "decoder1"
+  param {
+    lr_mult: 0.014
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "gaussian"
+      std: 0.707
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "dec_Sigmoid1"
+  type: "Sigmoid"
+  bottom: "decoder1"
+  top: "decoder1"
+}
+
+layer {
+  name: "decoder2"
+  type: "InnerProduct"
+  bottom: "decoder1"
+  top: "decoder2"
+  param {
+    lr_mult: 0.056
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "gaussian"
+      std: 0.1767
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "dec_Sigmoid2"
+  type: "Sigmoid"
+  bottom: "decoder2"
+  top: "decoder2"
+}
+
+
+layer {
+  name: "decoder3"
+  type: "InnerProduct"
+  bottom: "decoder2"
+  top: "decoder3"
+  param {
+    lr_mult: 0.22
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 1024
+    weight_filler {
+      type: "gaussian"
+      std: 0.044
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "dec_Sigmoid3"
+  type: "Sigmoid"
+  bottom: "decoder3"
+  top: "decoder3"
+}
+
+layer {
+  name: "output"
+  type: "InnerProduct"
+  bottom: "decoder3"
+  top: "output"
+  param {
+    lr_mult: 0.32
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 10519
+    weight_filler {
+      type: "gaussian"
+      std: 0.03125
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "output_Sigmoid"
+  type: "Sigmoid"
+  bottom: "output"
+  top: "output_Sigmoid"
+}
+
+
 ###################################################
-# Softmax Classification
+# Loss Functions
 ###################################################
 
 layer {
   name: "loss"
-  type: "SoftmaxWithLoss"
-  bottom: "clas"
-  bottom: "label"
-  top: "loss"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "output"
+  bottom: "r_hc_features"
+  top: "cross_entropy_loss"
+  loss_weight: 1
 }
 
 layer {
-  name: "accuracy"
-  type: "Accuracy"
-  bottom: "clas"
-  bottom: "label"
-  top: "accuracy"
-  include {
-    phase: TEST
-  }
+  name: "loss"
+  type: "EuclideanLoss"
+  bottom: "output_Sigmoid"
+  bottom: "r_hc_features"
+  top: "l2_error"
+  loss_weight: 1
 }
