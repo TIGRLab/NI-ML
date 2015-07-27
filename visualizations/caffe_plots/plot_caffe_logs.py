@@ -56,7 +56,10 @@ if __name__ == "__main__":
     logs_path = arguments['<path_to_logs>']
     train_file = logs_path + 'caffe.INFO.train'
     valid_file = logs_path + 'caffe.INFO.test'
+    #plt.style.use('ggplot')
     plot_from_logs(train_file, valid_file)
+
+
 
 
 
