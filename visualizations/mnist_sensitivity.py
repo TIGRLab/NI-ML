@@ -69,4 +69,4 @@ prediction_node = 'prob'
 
 h = 0.1
 
-s0, rx0 = sample_Sjk(net, X_0, h, 0)
+#S0 = sample_Sjk(net, X_0, h)

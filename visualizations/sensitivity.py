@@ -51,31 +51,13 @@ def PSA(X, n_components, iterated_power=3, random_state=None, whiten=False):
     return components_, explained_variance_, explained_variance_ratio_
 
 
-def sample_binary_Sjk(net, X):
-    """
-    Produces sensitivity maps for class 0 and class 1 by perturbing all elements
-    of the given data X to find df(x) / dx_i.
-    :param net:
-    :param X:
-    :return: Mean sensitivity maps and collected df(x) / dx_i for all samples in X.
-    """
-    Sk0 = np.zeros([X.shape[0], X.shape[1]])
-    Sk1 = np.zeros([X.shape[0], X.shape[1]])
-
-    for i, x in enumerate(X):
-        outp, outn, ski0, ski1 = binary_Sjk(net, x)
-        Sk0[i] = ski0
-        Sk1[i] = ski1
-    return np.mean(Sk0, axis=0), np.mean(Sk1, axis=0), Sk0, Sk1
-
-
 def sample_binary_FF_Sjk(net, X):
     """
     Find the sensitivity maps for each unit in the hidden layers by performing
     binary perturbations of each input sample from X.
     :param net:
     :param X:
-    :return: The sensitivity maps, plus the collected df(x)/dx for each sample and layer.
+    :return: The sensitivity maps, plus the collected activations for each sample and layer. (N, D, H_i)
     """
 
     def matrix_sen(layer):
@@ -88,47 +70,52 @@ def sample_binary_FF_Sjk(net, X):
     FF2 = np.zeros([X.shape[0], X.shape[1], ff2shape[1]])
     for i, x in enumerate(X):
         I = np.identity(x.shape[0])
-        F(net, np.clip(x + I, 0, 1))
+        Forward(net, np.clip(x + I, 0, 1))
         ff1p = matrix_sen('ff1')
         ff2p = matrix_sen('ff2')
-        F(net, np.clip(x - I, 0, 1))
+        Forward(net, np.clip(x - I, 0, 1))
         ff1n = matrix_sen('ff1')
         ff2n = matrix_sen('ff2')
         FF1[i] = ff1p - ff1n
         FF2[i] = ff2p - ff2n
-    return np.mean(FF1, axis=0).T, np.mean(FF2, axis=0).T, FF1, FF2
+    return FF1, FF2
 
 
-def binary_Sjk(net, x):
+def sample_binary_perturbation_Sjk(net, X, pred_layer=None):
     """
-    Finds the change in the output units of the classifier F based on the perturbation of
-    a single element in the input, x.
+    Produces sensitivity maps for all prediction classes by perturbing all elements
+    of X to find df(x) / dx_i. Perturbations are binary.
     :param net:
-    :param x:
-    :return:
+    :param X:
+    :return: Collected df(x) / dx_i for all samples in X: (N samples, D elements, C classes)
     """
-    i = np.identity(x.shape[0])
-    # Forward pass on positive perturbations
-    outp = F(net, np.clip(x + i, 0, 1))
-    p0 = Py(net, 0); p1 = 1 - p0
+    if not pred_layer:
+        pred_layer = net.blobs.items()[-1][0]
 
-    # Forward pass on negative perturbations
-    outn = F(net, np.clip(x - i, 0, 1))
-    n0 = Py(net, 0); n1 = 1 - n0
-    return outp, outn, (p0 - n0), (p1 - n1)
+    pred_shape = net.blobs[pred_layer].data.shape
+
+    # Collect DXs here: N samples, D dimensions, C classes
+    SK = np.zeros((X.shape[0], X.shape[1], pred_shape[-1]))
+
+    for i, x in enumerate(X):
+        outp, outn, DX = binary_perturbed_Sjk(net, x)
+        SK[i] = DX
+    return SK
 
 
-def sample_Sjk(net, X, sensitivity_factor):
+def sample_Sjk(net, X, sensitivity_factor, pred_layer=None):
     """
     Computes the sensitivities for each input for each class over each input sample from X.
     :param net:
     :param X:
     :param sensitivity_factor:
     :param group:
-    :return:
+    :return: The df(x)/dx for all samples/elements/classes: (N samples, D elements, C classes)
     """
-    pred_node = net.blobs.items()[-1][0]
-    pred_shape = net.blobs[pred_node].data.shape
+    if not pred_layer:
+        pred_layer = net.blobs.items()[-1][0]
+    pred_shape = net.blobs[pred_layer].data.shape
+
     Sk = np.zeros((X.shape[0], X.shape[1], pred_shape[-1]))
     for i, x in enumerate(X):
         oshape = x.shape
@@ -148,24 +135,49 @@ def Sjk(net, X, H):
     """
     Run sensitivity testing for the given input vector x.
     :param net:
-    :param X:
-    :param H:
-    :return: outputs from both perturbations, plus df(x)/dx matrix
+    :param X: A matrix of (N samples, D features) inputs.
+    :param H: A matrix of (N, D) perturbations.
+    :return: Outputs from both perturbations, plus resulting df(x)/dx matrix.
     """
-    outp = F(net, X + H)
-    pyp = Py(net)
+    outp = Forward(net, X + H)
+    pyp = F(net)
 
-    outn = F(net, X - H)
-    pyn = Py(net)
+    outn = Forward(net, X - H)
+    pyn = F(net)
 
     p_dx = (pyp - pyn)
 
     di = np.diag_indices_from(H)
+
+    # The derivatives:
+    # df(x) / dx = f(x + h ) - f(x - h) / 2 * h
     h = np.tile(H[di], p_dx.shape[1]).reshape(-1, p_dx.shape[1])
     return outp, outn, p_dx / (2 * h)
 
 
-def F(net, X):
+def binary_perturbed_Sjk(net, X):
+    """
+    Finds the changes in outputs of the classifier based on the perturbation of
+    a single element in the input.
+    :param net:
+    :param X:
+    :return:
+    """
+    i = np.identity(X.shape[0])
+    # Forward pass on positive perturbations
+    outp = Forward(net, np.clip(X + i, 0, 1))
+    pyp = F(net, 0)
+
+    # Forward pass on negative perturbations
+    outn = Forward(net, np.clip(X - i, 0, 1))
+    pyn = F(net, 0)
+
+    p_dx = (pyp - pyn)
+
+    return outp, outn, p_dx
+
+
+def Forward(net, X):
     """
     Run a forward pass of this net for the given input X.
     :param net:
@@ -173,28 +185,56 @@ def F(net, X):
     :param H:
     :return:
     """
-    input_node = net.blobs.items()[0][0]
-    if 'label' in net.blobs.keys():
-        net.blobs['label'].reshape(X.shape[0], 1)
-    net.blobs[input_node].reshape(*X.shape)
+    if not net.init:
+        init_net(net, X)
+    input_node = net.blobs.items()[0][0] # TODO: use net.inputs attribute
     net.blobs[input_node].data[...] = X
     out = net.forward()
     return out
 
-def Py(net):
+
+def init_net(net, X):
     """
-    Returns the vector of probabilities P(y=group|X,W) for the given net: assumes F(net,X) has already been called.
+    Initializes the net's data layer dimensions for the given input.
     :param net:
-    :param group:
+    :param X:
     :return:
     """
-    prediction_node = net.blobs.items()[-1][0]
-    return np.log(net.blobs[prediction_node].data.copy())
+    print 'Initializing Net to X dimensions.'
+    input_node = net.blobs.items()[0][0] # TODO: use net.inputs attribute
+    if 'label' in net.blobs.keys():
+        net.blobs['label'].reshape(X.shape[0], 1)
+    net.blobs[input_node].reshape(*X.shape)
+    net.init = True
+
+
+def F(net, pred_layer=None):
+    """
+    Returns the vector of probabilities P(y=group|X,W) for the given net: assumes a forward pass using Forward() has
+    already been completed.
+    :param net:
+    :param pred_layer: The name of the net's prediction layer.
+    :return:
+    """
+    if not pred_layer:
+        pred_layer = net.blobs.items()[-1][0] # Assumes the prediction layer is last if not given.
+    return np.log(net.blobs[pred_layer].data.copy())
+
+
+def normed_sensitivities(S):
+    """
+    Normalize matrix containing sensitivity maps for D classes w/ respect to the largest value across *all*
+    classes.
+    :param S:
+    :return:
+    """
+    largest = np.max(S)
+    return S / largest
 
 
 def normed_sen(S0, S1):
     """
-    Normalize the two classes' sensitivity vectors relative to each other.
+    Normalize two classes' sensitivity vectors relative to each other.
     :param S0:
     :param S1:
     :return:
@@ -253,7 +293,7 @@ def plot_slices(slice_list, baseline_shape, baseline_mask, llimit=0.01, ulimit=0
     plt.show()
 
 
-def plot_features(FFSen, llimit=0.01, ulimit=0.99, num_features=32, xmin=200, xmax=1600):
+def plot_features(FFSen, baseline_shape, baseline_mask, llimit=0.01, ulimit=0.99, num_features=32, xmin=200, xmax=1600):
     """
     Visualize the sensitivity maps for the hidden layer units.
     :param FFSen:
@@ -271,7 +311,7 @@ def plot_features(FFSen, llimit=0.01, ulimit=0.99, num_features=32, xmin=200, xm
     plt.figure()
 
     plt.cla()
-    for j, input in enumerate(FFSen[0:32,:]):
+    for j, input in enumerate(FFSen[0:num_features,:]):
         input = input - np.mean(input, axis=0)
         input = input / np.max(np.abs(input))
         quantiles = mquantiles(input, [llimit, ulimit])
@@ -284,7 +324,7 @@ def plot_features(FFSen, llimit=0.01, ulimit=0.99, num_features=32, xmin=200, xm
     plt.show()
 
 
-def plot_psa_slices(comps, evars, llimit=0.0, ulimit=1.0, xmin=200, xmax=1600):
+def plot_psa_slices(comps, evars, baseline_shape, baseline_mask, llimit=0.0, ulimit=1.0, xmin=200, xmax=1600):
     """
     Visualize "principal sensitivity maps"
     :param comps:

@@ -13,7 +13,7 @@ from scipy.special import logit
 from scipy.special import expit as logistic
 
 # Make sure that caffe is on the python path:
-from sensitivity import sample_Sjk, normed_sen, sample_binary_Sjk, sample_binary_FF_Sjk, PSA, plot_slices, \
+from sensitivity import sample_Sjk, normed_sen, sample_binary_perturbation_Sjk, sample_binary_FF_Sjk, PSA, plot_slices, \
     plot_features, plot_psa_slices, Sjk
 
 caffe_root = '/home/fran/workspace/caffe/'  # this file is expected to be in {caffe_root}/examples
@@ -85,12 +85,12 @@ X_fused_0 = X_fused[find0, :]
 X_fused_1 = X_fused[find1, :]
 
 DX0 = sample_Sjk(net, X_fused_0, sensitivity_factor)
-sx0 = np.mean(DX0[:,:,0], axis=0)
+sx0 = np.mean(DX0[:, :, 0], axis=0)
 # X_fused_0_mu = np.mean(X_fused_0, axis=0)
 # sx0 = DX0[:, :, 0] / (2 * X_fused_0_mu * sensitivity_factor)
 
 DX1 = sample_Sjk(net, X_fused_1, sensitivity_factor)
-sx1 = np.mean(DX1[:,:,0], axis=0)
+sx1 = np.mean(DX1[:, :, 0], axis=0)
 # sx1 = DX1[:, :, 0] / (2 * np.mean(X_fused_1, axis=0) * sensitivity_factor)
 
 mean_sen0, mean_sen1 = normed_sen(sx0, sx1)
@@ -98,13 +98,19 @@ mean_sen0, mean_sen1 = normed_sen(sx0, sx1)
 # Binary sensitivity over the test set for each class:
 # Note: should we only go over the X_fused data for that class?
 # If so, then we possibly miss out on learning about counter-examples.
-bs0, bs1, brx0, brx1 = sample_binary_Sjk(net, X_fused)
+bDX = sample_binary_perturbation_Sjk(net, X_fused)
+brx0 = bDX[:, :, 0]
+brx1 = bDX[:, :, 0]
+bs0 = np.mean(brx0, axis=0)
+bs1 = np.mean(brx1, axis=0)
 
 normed_bs0, normed_bs1 = normed_sen(bs0, bs1)
 
 
 # FF1 and FF2 activations:
-SFF1, SFF2, FF1, FF2 = sample_binary_FF_Sjk(net, X_fused)
+FF1, FF2 = sample_binary_FF_Sjk(net, X_fused)
+FF1mu = np.mean(FF1, axis=0).T
+FF2mu = np.mean(FF2, axis=0).T
 
 # Principal Sensitivity Analysis
 # K = E[r(x)r(x).T] where r(x) is a k-dimensional vector of the partial derivatives of F(x) w/ respect to x_k
@@ -138,15 +144,15 @@ sl = [(bs0, 'binary 0'), (bs1, 'binary 1'),
       (mean_sen0, 'mean of sen 0'), (mean_sen1, 'mean of sen 1'),
       (sen0, 'sen of mean 0'), (sen1, 'sen of mean 1')]
 
-sla = [(sx0, 'sx0'), (sx1, 'sx1'), (s0k, 's0k'), (s1k, 's1k')]
+#sla = [(sx0, 'sx0'), (sx1, 'sx1'), (s0k, 's0k'), (s1k, 's1k')]
 
-plot_slices(sla, baseline_shape, baseline_mask)
+plot_slices(sl, baseline_shape, baseline_mask)
 
 # Visualize ff1/ff2 layer activations sensitivity maps for a few of the units
-plot_features(SFF1)
-plot_features(SFF2)
+plot_features(FF1mu, baseline_shape, baseline_mask)
+plot_features(FF2mu, baseline_shape, baseline_mask)
 
-plot_psa_slices(comps, evars)
+plot_psa_slices(comps, evars, baseline_shape, baseline_mask)
 
 
 
