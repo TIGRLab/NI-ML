@@ -2,10 +2,10 @@ net: "net.prototxt"             # Net definition file
 solver_type: ADAGRAD
 test_iter: 50                       # Number of validation iterations: test_iter x test_batch_size ~= # test samples
 test_interval: 5000                 # When to run validation during training
-base_lr: 0.01                        # Starting learning rate
-lr_policy: "fixed"                   # Learning rate adjustment policy
+base_lr: 0.001                        # Starting learning rate
+lr_policy: "step"                   # Learning rate adjustment policy
 gamma: 0.1                          # Learning rate multiplier
-stepsize: 100000                     # Iterations between learning rate change
+stepsize: 15000                     # Iterations between learning rate change
 display: 1000                       # Iterations between print output
 max_iter: 300000                     # Iterations before training finishes
 #momentum: 0.9                       # Momemtum!

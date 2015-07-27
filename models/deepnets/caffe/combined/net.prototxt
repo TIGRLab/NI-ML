@@ -6,15 +6,18 @@ name: "combined_net"
 
 # Training Data
 layer {
-  name: "l_hc_features"
+  name: "training_data"
   type: "HDF5Data"
   top: "l_hc_features"
+  top: "r_hc_features"
+  top: "l_ec_features"
+  top: "r_ec_features"
   top: "label"
   include {
     phase: TRAIN
   }
   hdf5_data_param {
-    source: "l_hc_train.txt"
+    source: "train.txt"
     shuffle: true
     batch_size: 256
   }
@@ -22,58 +25,35 @@ layer {
 
 # Test Data
 layer {
-  name: "l_hc_features"
+  name: "valid_data"
   type: "HDF5Data"
   top: "l_hc_features"
+  top: "r_hc_features"
+  top: "l_ec_features"
+  top: "r_ec_features"
   top: "label"
   include {
     phase: TEST
   }
   hdf5_data_param {
-    source: "l_hc_test.txt"
-    batch_size: 256
-  }
-}
-
-# Training Data
-layer {
-  name: "r_hc_features"
-  type: "HDF5Data"
-  top: "r_hc_features"
-  include {
-    phase: TRAIN
-  }
-  hdf5_data_param {
-    source: "r_hc_train.txt"
+    source: "test.txt"
     shuffle: true
     batch_size: 256
   }
 }
-
-# Test Data
-layer {
-  name: "r_hc_features"
-  type: "HDF5Data"
-  top: "r_hc_features"
-  include {
-    phase: TEST
-  }
-  hdf5_data_param {
-    source: "r_hc_test.txt"
-    batch_size: 256
-  }
-}
-
 
 
 ###################################
 # Feed forward layers
 #
+#
+# HC:
+#
 layer {
-  name: "ec_ff1"
+  name: "l_hc_ff1"
   type: "InnerProduct"
   bottom: "l_hc_features"
-  top: "ec_ff1"
+  top: "l_hc_ff1"
   param {
     lr_mult: 2
     decay_mult: 1
@@ -92,26 +72,26 @@ layer {
 }
 
 layer {
-  name: "ec_relu1"
+  name: "l_hc_relu1"
   type: "ReLU"
-  bottom: "ec_ff1"
-  top: "ec_ff1"
+  bottom: "l_hc_ff1"
+  top: "l_hc_ff1"
 }
 layer {
-  name: "ec_drop1"
+  name: "l_hc_drop1"
   type: "Dropout"
-  bottom: "ec_ff1"
-  top: "ec_ff1"
+  bottom: "l_hc_ff1"
+  top: "l_hc_ff1"
   dropout_param {
     dropout_ratio: 0.2
   }
 }
 
 layer {
-  name: "ec_ff2"
+  name: "l_hc_ff2"
   type: "InnerProduct"
-  bottom: "ec_ff1"
-  top: "ec_ff2"
+  bottom: "l_hc_ff1"
+  top: "l_hc_ff2"
   param {
     lr_mult: 2
     decay_mult: 1
@@ -130,27 +110,30 @@ layer {
 }
 
 layer {
-  name: "ec_relu2"
+  name: "l_hc_relu2"
   type: "ReLU"
-  bottom: "ec_ff2"
-  top: "ec_ff2"
+  bottom: "l_hc_ff2"
+  top: "l_hc_ff2"
 }
 
 layer {
-  name: "ec_drop2"
+  name: "l_hc_drop2"
   type: "Dropout"
-  bottom: "ec_ff2"
-  top: "ec_ff2"
+  bottom: "l_hc_ff2"
+  top: "l_hc_ff2"
   dropout_param {
-    dropout_ratio: 0.8
+    dropout_ratio: 0.6
   }
 }
 
+#
+# HC R
+#
 layer {
-  name: "hc_ff1"
+  name: "r_hc_ff1"
   type: "InnerProduct"
   bottom: "r_hc_features"
-  top: "hc_ff1"
+  top: "r_hc_ff1"
   param {
     lr_mult: 2
     decay_mult: 1
@@ -169,26 +152,26 @@ layer {
 }
 
 layer {
-  name: "hc_relu1"
+  name: "r_hc_relu1"
   type: "ReLU"
-  bottom: "hc_ff1"
-  top: "hc_ff1"
+  bottom: "r_hc_ff1"
+  top: "r_hc_ff1"
 }
 layer {
-  name: "hc_drop1"
+  name: "r_hc_drop1"
   type: "Dropout"
-  bottom: "hc_ff1"
-  top: "hc_ff1"
+  bottom: "r_hc_ff1"
+  top: "r_hc_ff1"
   dropout_param {
     dropout_ratio: 0.2
   }
 }
 
 layer {
-  name: "hc_ff2"
+  name: "r_hc_ff2"
   type: "InnerProduct"
-  bottom: "hc_ff1"
-  top: "hc_ff2"
+  bottom: "r_hc_ff1"
+  top: "r_hc_ff2"
   param {
     lr_mult: 2
     decay_mult: 1
@@ -207,33 +190,198 @@ layer {
 }
 
 layer {
-  name: "hc_relu2"
+  name: "r_hc_relu2"
   type: "ReLU"
-  bottom: "hc_ff2"
-  top: "hc_ff2"
+  bottom: "r_hc_ff2"
+  top: "r_hc_ff2"
 }
 
 layer {
-  name: "hc_drop2"
+  name: "r_hc_drop2"
   type: "Dropout"
-  bottom: "hc_ff2"
-  top: "hc_ff2"
+  bottom: "r_hc_ff2"
+  top: "r_hc_ff2"
   dropout_param {
-    dropout_ratio: 0.8
+    dropout_ratio: 0.6
   }
 }
 
+#
+# EC L
+#
+layer {
+  name: "l_ec_ff1"
+  type: "InnerProduct"
+  bottom: "l_ec_features"
+  top: "l_ec_ff1"
+  param {
+    lr_mult: 2
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "gaussian"
+      std: 0.008
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.1
+    }
+  }
+}
+
+layer {
+  name: "l_ec_relu1"
+  type: "ReLU"
+  bottom: "l_ec_ff1"
+  top: "l_ec_ff1"
+}
+layer {
+  name: "l_ec_drop1"
+  type: "Dropout"
+  bottom: "l_ec_ff1"
+  top: "l_ec_ff1"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+layer {
+  name: "l_ec_ff2"
+  type: "InnerProduct"
+  bottom: "l_ec_ff1"
+  top: "l_ec_ff2"
+  param {
+    lr_mult: 2
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "gaussian"
+      std: 0.177
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.1
+    }
+  }
+}
+
+layer {
+  name: "l_ec_relu2"
+  type: "ReLU"
+  bottom: "l_ec_ff2"
+  top: "l_ec_ff2"
+}
+
+layer {
+  name: "l_ec_drop2"
+  type: "Dropout"
+  bottom: "l_ec_ff2"
+  top: "l_ec_ff2"
+  dropout_param {
+    dropout_ratio: 0.6
+  }
+}
+
+
+#
+# EC R
+#
+layer {
+  name: "r_ec_ff1"
+  type: "InnerProduct"
+  bottom: "r_ec_features"
+  top: "r_ec_ff1"
+  param {
+    lr_mult: 2
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "gaussian"
+      std: 0.008
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.1
+    }
+  }
+}
+
+layer {
+  name: "r_ec_relu1"
+  type: "ReLU"
+  bottom: "r_ec_ff1"
+  top: "r_ec_ff1"
+}
+layer {
+  name: "r_ec_drop1"
+  type: "Dropout"
+  bottom: "r_ec_ff1"
+  top: "r_ec_ff1"
+  dropout_param {
+    dropout_ratio: 0.2
+  }
+}
+
+layer {
+  name: "r_ec_ff2"
+  type: "InnerProduct"
+  bottom: "r_ec_ff1"
+  top: "r_ec_ff2"
+  param {
+    lr_mult: 2
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 32
+    weight_filler {
+      type: "gaussian"
+      std: 0.177
+    }
+    bias_filler {
+      type: "constant"
+      value: 0.1
+    }
+  }
+}
+
+layer {
+  name: "r_ec_relu2"
+  type: "ReLU"
+  bottom: "r_ec_ff2"
+  top: "r_ec_ff2"
+}
+
+layer {
+  name: "r_ec_drop2"
+  type: "Dropout"
+  bottom: "r_ec_ff2"
+  top: "r_ec_ff2"
+  dropout_param {
+    dropout_ratio: 0.6
+  }
+}
+
+#
+# Combined Layers:
+#
 layer {
   name: "concatenator"
   type: "Concat"
-  bottom: "hc_ff2"
-  bottom: "ec_ff2"
+  bottom: "r_hc_ff2"
+  bottom: "l_hc_ff2"
+  bottom: "r_ec_ff2"
+  bottom: "l_ec_ff2"
   top: "concatenator"
   concat_param {
     axis: 1
   }
 }
-
 
 layer {
   name: "ff3"
@@ -270,7 +418,7 @@ layer {
   bottom: "ff3"
   top: "ff3"
   dropout_param {
-    dropout_ratio: 0.8
+    dropout_ratio: 0.6
   }
 }
 
@@ -310,7 +458,7 @@ layer {
   bottom: "ff4"
   top: "ff4"
   dropout_param {
-    dropout_ratio: 0.8
+    dropout_ratio: 0.6
   }
 }
 
