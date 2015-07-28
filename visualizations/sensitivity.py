@@ -51,7 +51,7 @@ def PSA(X, n_components, iterated_power=3, random_state=None, whiten=False):
     return components_, explained_variance_, explained_variance_ratio_
 
 
-def sample_binary_FF_Sjk(net, X):
+def sample_binary_FF_Sjk(net, X, layerlist):
     """
     Find the sensitivity maps for each unit in the hidden layers by performing
     binary perturbations of each input sample from X.
@@ -64,21 +64,19 @@ def sample_binary_FF_Sjk(net, X):
         ff = net.blobs[layer].data.copy()
         return ff
 
-    ff1shape = net.blobs['ff1'].data.shape
-    ff2shape = net.blobs['ff2'].data.shape
-    FF1 = np.zeros([X.shape[0], X.shape[1], ff1shape[1]])
-    FF2 = np.zeros([X.shape[0], X.shape[1], ff2shape[1]])
+    DX = {}
+    for layer in layerlist:
+        shape = net.blobs[layer].data.shape
+        DX[layer] = np.zeros([X.shape[0], X.shape[1], shape[1]])
     for i, x in enumerate(X):
         I = np.identity(x.shape[0])
         Forward(net, np.clip(x + I, 0, 1))
-        ff1p = matrix_sen('ff1')
-        ff2p = matrix_sen('ff2')
+        for layer in layerlist:
+            DX[layer][i] = matrix_sen(layer)
         Forward(net, np.clip(x - I, 0, 1))
-        ff1n = matrix_sen('ff1')
-        ff2n = matrix_sen('ff2')
-        FF1[i] = ff1p - ff1n
-        FF2[i] = ff2p - ff2n
-    return FF1, FF2
+        for layer in layerlist:
+            DX[layer][i] = DX[layer][i] - matrix_sen(layer)
+    return DX
 
 
 def sample_binary_perturbation_Sjk(net, X, pred_layer=None):
@@ -95,7 +93,10 @@ def sample_binary_perturbation_Sjk(net, X, pred_layer=None):
     pred_shape = net.blobs[pred_layer].data.shape
 
     # Collect DXs here: N samples, D dimensions, C classes
-    SK = np.zeros((X.shape[0], X.shape[1], pred_shape[-1]))
+    X_shape = list(X.shape)
+    X_shape.append(pred_shape[-1])
+    out_shape = tuple(X_shape)
+    SK = np.zeros(out_shape)
 
     for i, x in enumerate(X):
         outp, outn, DX = binary_perturbed_Sjk(net, x)
@@ -116,27 +117,35 @@ def sample_Sjk(net, X, sensitivity_factor, pred_layer=None):
         pred_layer = net.blobs.items()[-1][0]
     pred_shape = net.blobs[pred_layer].data.shape
 
-    Sk = np.zeros((X.shape[0], X.shape[1], pred_shape[-1]))
+    X_shape = list(X.shape)
+    X_shape.append(pred_shape[-1])
+    out_shape = tuple(X_shape)
+
+    SK = np.zeros(out_shape)
     for i, x in enumerate(X):
+        x_max = np.max(x)
+        odim = x.ndim
         oshape = x.shape
-        if x.ndim > 1:
+        h = sensitivity_factor * x_max
+        if odim > 1:
             x = x.ravel()
-        H = np.identity(x.shape[0]) * sensitivity_factor
-        if x.ndim > 1:
+        H = np.identity(x.shape[0]) * h
+        if odim > 1:
             H = H.reshape(H.shape[0], *oshape)
             x = x.reshape(oshape)
-        outp, outn, DX = Sjk(net, x, H)
+        outp, outn, DX = Sjk(net, x, H, h)
+        out_shape = list(oshape)
+        out_shape.append(DX.shape[-1])
+        SK[i] = DX.reshape(out_shape)
+    return SK
 
-        Sk[i] = DX
-    return Sk
 
-
-def Sjk(net, X, H):
+def Sjk(net, X, H, h):
     """
     Run sensitivity testing for the given input vector x.
     :param net:
-    :param X: A matrix of (N samples, D features) inputs.
-    :param H: A matrix of (N, D) perturbations.
+    :param X: A matrix of (N samples, (D feature dims)) inputs.
+    :param H: A matrix of (N, (D)) perturbations.
     :return: Outputs from both perturbations, plus resulting df(x)/dx matrix.
     """
     outp = Forward(net, X + H)
@@ -147,11 +156,11 @@ def Sjk(net, X, H):
 
     p_dx = (pyp - pyn)
 
-    di = np.diag_indices_from(H)
-
     # The derivatives:
     # df(x) / dx = f(x + h ) - f(x - h) / 2 * h
-    h = np.tile(H[di], p_dx.shape[1]).reshape(-1, p_dx.shape[1])
+    # Only works for hypercubes (ie. all dimensions equal length):
+    # di = np.diag_indices_from(H)
+    # h = np.tile(H[di], p_dx.shape[1]).reshape(-1, p_dx.shape[1])
     return outp, outn, p_dx / (2 * h)
 
 
@@ -166,11 +175,11 @@ def binary_perturbed_Sjk(net, X):
     i = np.identity(X.shape[0])
     # Forward pass on positive perturbations
     outp = Forward(net, np.clip(X + i, 0, 1))
-    pyp = F(net, 0)
+    pyp = F(net)
 
     # Forward pass on negative perturbations
     outn = Forward(net, np.clip(X - i, 0, 1))
-    pyn = F(net, 0)
+    pyn = F(net)
 
     p_dx = (pyp - pyn)
 
@@ -185,8 +194,7 @@ def Forward(net, X):
     :param H:
     :return:
     """
-    if not net.init:
-        init_net(net, X)
+    init_net(net, X)
     input_node = net.blobs.items()[0][0] # TODO: use net.inputs attribute
     net.blobs[input_node].data[...] = X
     out = net.forward()
@@ -200,17 +208,19 @@ def init_net(net, X):
     :param X:
     :return:
     """
-    print 'Initializing Net to X dimensions.'
-    input_node = net.blobs.items()[0][0] # TODO: use net.inputs attribute
+    #print 'Initializing Net to X input dimensions.'
+    input_node = net.blobs.items()[0][1] # TODO: use net.inputs attribute
+    pred_node = net.blobs.items()[-1][1]
     if 'label' in net.blobs.keys():
         net.blobs['label'].reshape(X.shape[0], 1)
-    net.blobs[input_node].reshape(*X.shape)
+    input_node.reshape(*X.shape)
+    pred_node.reshape(X.shape[0], pred_node.data.shape[-1])
     net.init = True
 
 
 def F(net, pred_layer=None):
     """
-    Returns the vector of probabilities P(y=group|X,W) for the given net: assumes a forward pass using Forward() has
+    Returns the vector of log probabilities logP(y=group|X,W) for the given net: assumes a forward pass using Forward() has
     already been completed.
     :param net:
     :param pred_layer: The name of the net's prediction layer.
@@ -313,7 +323,7 @@ def plot_features(FFSen, baseline_shape, baseline_mask, llimit=0.01, ulimit=0.99
     plt.cla()
     for j, input in enumerate(FFSen[0:num_features,:]):
         input = input - np.mean(input, axis=0)
-        input = input / np.max(np.abs(input))
+        input = input / np.max(np.abs(input)) + 1e-32
         quantiles = mquantiles(input, [llimit, ulimit])
         wt_vol = get3DVol(input, baseline_shape, baseline_mask)
         plt.subplot(rows, cols, j + 1)
@@ -338,10 +348,10 @@ def plot_psa_slices(comps, evars, baseline_shape, baseline_mask, llimit=0.0, uli
     plt.style.use('ggplot')
     plt.figure()
     cols = 2
-    rows = comps / cols
+    rows = comps.shape[0] / cols
     plt.cla()
-    for j in range(comps):
-        quantiles = mquantiles(comps[0], [llimit, ulimit])
+    for j in range(comps.shape[0]):
+        quantiles = mquantiles(comps[j], [llimit, ulimit])
         wt_vol = get3DVol(comps[j], baseline_shape, baseline_mask)
         plt.subplot(rows, cols, j + 1)
         im = plt.imshow(wt_vol[:, xmin:xmax], cmap=plt.cm.RdBu_r, aspect='auto', interpolation='none', vmin=-.06, vmax=0.06)

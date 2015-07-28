@@ -14,7 +14,7 @@ from scipy.special import expit as logistic
 from sensitivity import sample_Sjk
 
 # Make sure that caffe is on the python path:
-caffe_root = '/home/fran/workspace/caffe/'  # this file is expected to be in {caffe_root}/examples
+caffe_root = '/projects/francisco/repositories/caffe/'  # this file is expected to be in {caffe_root}/examples
 sys.path.insert(0, caffe_root + 'python')
 import caffe
 
@@ -25,10 +25,11 @@ caffe.set_mode_gpu()
 # This section for MNIST:
 data_path = '/projects/francisco/repositories/caffe/examples/mnist/mnist_test_lmdb/'
 model_path = '/projects/francisco/repositories/caffe/examples/mnist'
+#net_file = 'lenet_train_test.prototxt'
 net_file = 'lenet.prototxt'
 model_file = 'lenet_iter_10000.caffemodel'
 
-os.chdir(model_path)
+os.chdir(caffe_root)
 
 
 lmdb_env = lmdb.open(data_path)
@@ -37,7 +38,7 @@ lmdb_cursor = lmdb_txn.cursor()
 
 N = int(lmdb_env.stat()['entries'])
 # Convert lmdb data to numpy vectors:
-X = np.zeros((N, 28, 28)) # MNIST images are 28 x 28
+X = np.zeros((N, 1, 28, 28)) # MNIST images are 28 x 28
 y = np.zeros((N, 1))
 i = 0
 for key, value in lmdb_cursor:
@@ -46,7 +47,7 @@ for key, value in lmdb_cursor:
     label = int(datum.label)
     image = caffe.io.datum_to_array(datum)
     image = image.astype(np.uint8)
-    X[i] = image
+    X[i,0] = image
     y[i] = label
     i += 1
 
@@ -62,11 +63,11 @@ X_9 = X[inds[9]]
 X_0 = X[inds[0]]
 
 # Load the net
-net = caffe.Net(net_file, model_file, caffe.TEST)
-input_node = 'data'
-label_node = 'label'
-prediction_node = 'prob'
-
+net = caffe.Net('examples/mnist/' + net_file, 'examples/mnist/' + model_file, caffe.TEST)
+# input_node = 'data'
+# label_node = 'label'
+# prediction_node = 'prob'
+#
 h = 0.1
-
-#S0 = sample_Sjk(net, X_0, h)
+#
+S0 = sample_Sjk(net, X_0, h)
