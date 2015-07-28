@@ -1,22 +1,34 @@
 #!/bin/sh
-# Usage: ./train.sh <model path> [<pretrained model file>]
-if [ -z "$1" ];
+# Usage: ./train.sh <gpu> <model path> [<pretrained model file>]
+if [ $# -lt 2 ];
 then
-    echo "Usage: ./train.sh <model path> [<pre-trained model file>]";
+    echo "Usage: ./train.sh <gpu> <model path> [<pre-trained model file>]";
     exit 1;
 fi
 
-
 WORKING=`pwd`
-MODEL=$1
+MODEL=$2
+GPU=$1
+LOGS=./logs/
+TRAIN=./train/
 cd $MODEL
 
-if [ -n "$2" ]
+if [ ! -d "$LOGS" ];
 then
-  WEIGHTS=$2
-  caffe train --solver=solver.prototxt --log_dir=./logs/ -weights $WEIGHTS -gpu 0;
+    mkdir $LOGS;
+fi
+
+if [ ! -d "$TRAIN" ];
+then
+    mkdir $TRAIN;
+fi
+
+if [ -n "$3" ]
+then
+  WEIGHTS=$3
+  caffe train --solver=solver.prototxt -log_dir=$LOGS -weights $WEIGHTS -gpu $GPU;
 else
-  caffe train --solver=solver.prototxt --log_dir=./logs/ -gpu 0;
+  caffe train --solver=solver.prototxt -log_dir=$LOGS -gpu $GPU;
 fi
 
 cd $WORKING
