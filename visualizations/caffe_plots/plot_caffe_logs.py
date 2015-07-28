@@ -31,8 +31,9 @@ def plot_from_logs(train_file, valid_file):
     # Training loss and validation accuracy:
     plt.figure(1)
     plt.subplot(211)
-    p1, = plt.plot(t_iters, tX[:, 3], 'b', label="Training Loss")
-    p2, = plt.plot(v_iters, vX[:, 3], 'g', label="Validation Accuracy")
+    p1, = plt.plot(t_iters, tX[:, 2], 'b', label="Training Loss")
+    p2, = plt.plot(v_iters, vX[:, 2], 'g', label="Validation Accuracy")
+    p3, = plt.plot(v_iters, vX[:, 3], 'r', label="Validation Loss")
     plt.xlabel('Iterations')
     plt.ylabel('Loss/Accuracy')
     plt.legend(bbox_to_anchor=(0.,1.02, 1., 0.102), loc=3, ncol=2, mode="expand", borderaxespad=0.)
@@ -40,7 +41,7 @@ def plot_from_logs(train_file, valid_file):
 
     # Learning rate:
     plt.subplot(212)
-    p3, = plt.plot(t_iters, tX[:, 2], label="Learning Rate")
+    p3, = plt.plot(t_iters, tX[:, 3], label="Learning Rate")
     plt.xlabel('Iterations')
     plt.ylabel('Learning Rate')
     plt.legend(loc=3)
