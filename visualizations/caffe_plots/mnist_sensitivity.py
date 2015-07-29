@@ -60,6 +60,7 @@ for key, value in inds.items():
     print 'label {}: {} entries'.format(key, len(value))
 
 X_9 = X[inds[9]]
+
 X_0 = X[inds[0]]
 
 # Load the net
