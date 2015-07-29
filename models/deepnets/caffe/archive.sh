@@ -8,10 +8,15 @@ fi
 
 MODEL=$1
 ITER=$2
-DATE=`date +%Y-%m-%d`
+DATE=`date +%Y-%m-%d-%T`
 
 MODEL_FILES=$MODEL/train/_iter_*.caffemodel
 SOLVER_FILES=$MODEL/train/_iter_*.solverstate
+
+if [ ! -d "$MODEL/archive/" ];
+then
+   mkdir $MODEL/archive/;
+fi
 
 mkdir $MODEL/archive/$DATE/
 
