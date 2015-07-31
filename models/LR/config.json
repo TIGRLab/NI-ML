@@ -1,14 +1,14 @@
 {
   "language": "PYTHON",
-  "main-file": "experiment.py",
-  "experiment-name": "LinearSVM",
+  "main-file": "lr.py",
+  "experiment-name": "PCA_LR",
   "likelihood": "GAUSSIAN",
   "variables": {
-    "learning_rate": {
-      "type" : "FLOAT",
+    "n_components": {
+      "type" : "int",
       "size" : 1,
-      "min"  : 0.01,
-      "max"  : 1.0
+      "min"  : 5,
+      "max"  : 1000
     },
     "C": {
       "type": "FLOAT",

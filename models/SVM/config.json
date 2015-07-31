@@ -1,6 +1,6 @@
 {
   "language": "PYTHON",
-  "main-file": "experiment.py",
+  "main-file": "linearSVM.py",
   "experiment-name": "LinearSVM",
   "likelihood": "GAUSSIAN",
   "variables": {
