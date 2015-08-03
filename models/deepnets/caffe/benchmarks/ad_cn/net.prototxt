@@ -1,0 +1,297 @@
+name: "AutoEncoder"
+
+###################################################
+# Data Layer
+###################################################
+
+# Training Data
+layer {
+  name: "r_hc_features"
+  type: "HDF5Data"
+  top: "r_hc_features"
+  #top: "label"
+  include {
+    phase: TRAIN
+  }
+  hdf5_data_param {
+    source: "train.txt"
+    batch_size: 128
+    shuffle: true
+  }
+  #transform_param {
+  #  mean_value: 0.21529174
+  #}
+}
+
+# Test Data
+layer {
+  name: "r_hc_features"
+  type: "HDF5Data"
+  top: "r_hc_features"
+  #top: "label"
+  include {
+    phase: TEST
+  }
+  hdf5_data_param {
+    source: "test.txt"
+    batch_size: 128
+    shuffle: true
+  }
+  #transform_param {
+  #  mean_value: 0.21529174
+  #}
+}
+
+
+###################################
+# Encoding Layers
+
+layer {
+  name: "encoder1"
+  type: "InnerProduct"
+  bottom: "r_hc_features"
+  top: "encoder1"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 13000
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "enc_Sigmoid1"
+  type: "Sigmoid"
+  bottom: "encoder1"
+  top: "encoder1"
+}
+
+
+layer {
+  name: "encoder2"
+  type: "InnerProduct"
+  bottom: "encoder1"
+  top: "encoder2"
+  param {
+    lr_mult: 0.32
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 2048
+    weight_filler {
+      type: "gaussian"
+      std: 0.03125
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "enc_Sigmoid2"
+  type: "Sigmoid"
+  bottom: "encoder2"
+  top: "encoder2"
+}
+
+#layer {
+#  name: "encoder3"
+#  type: "InnerProduct"
+#  bottom: "encoder2"
+#  top: "encoder3"
+#  param {
+#    lr_mult: 0.22
+#    decay_mult: 1
+#  }
+#  inner_product_param {
+#    num_output: 32
+#    weight_filler {
+#      type: "gaussian"
+#      std: 0.088
+#    }
+#    bias_filler {
+#      type: "constant"
+#      value: 0
+#    }
+#  }
+#}
+#layer {
+#  name: "enc_Sigmoid3"
+#  type: "Sigmoid"
+#  bottom: "encoder3"
+#  top: "encoder3"
+#}
+
+
+###################################
+# Code Layer
+
+layer {
+  name: "code"
+  type: "InnerProduct"
+  bottom: "encoder2"
+  top: "code"
+  param {
+    lr_mult: 0.056
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 512
+    weight_filler {
+      type: "gaussian"
+      std: 0.88
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+###################################
+# Decoding Layers
+###################################
+#layer {
+#  name: "decoder1"
+#  type: "InnerProduct"
+#  bottom: "code"
+#  top: "decoder1"
+#  param {
+#    lr_mult: 0.014
+#    decay_mult: 1
+#  }
+#  inner_product_param {
+#    num_output: 32
+#    weight_filler {
+#      type: "gaussian"
+#      std: 1.0
+#    }
+#    bias_filler {
+#      type: "constant"
+#      value: 0
+#    }
+#  }
+#}
+#layer {
+#  name: "dec_Sigmoid1"
+#  type: "Sigmoid"
+#  bottom: "decoder1"
+#  top: "decoder1"
+#}
+
+layer {
+  name: "decoder1"
+  type: "InnerProduct"
+  bottom: "code"
+  top: "decoder1"
+  param {
+    lr_mult: 0.056
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 2048
+    weight_filler {
+      type: "gaussian"
+      std: 0.25
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "dec_Sigmoid1"
+  type: "Sigmoid"
+  bottom: "decoder1"
+  top: "decoder1"
+}
+
+
+layer {
+  name: "decoder2"
+  type: "InnerProduct"
+  bottom: "decoder1"
+  top: "decoder2"
+  param {
+    lr_mult: 0.22
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 13000
+    weight_filler {
+      type: "gaussian"
+      std: 0.088
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "dec_Sigmoid2"
+  type: "Sigmoid"
+  bottom: "decoder2"
+  top: "decoder2"
+}
+
+layer {
+  name: "output"
+  type: "InnerProduct"
+  bottom: "decoder2"
+  top: "output"
+  param {
+    lr_mult: 0.32
+    decay_mult: 1
+  }
+  inner_product_param {
+    num_output: 10519
+    weight_filler {
+      type: "gaussian"
+      std: 0.03125
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "output_Sigmoid"
+  type: "Sigmoid"
+  bottom: "output"
+  top: "output_Sigmoid"
+}
+
+
+###################################################
+# Loss Functions
+###################################################
+
+layer {
+  name: "loss"
+  type: "SigmoidCrossEntropyLoss"
+  bottom: "output"
+  bottom: "r_hc_features"
+  top: "cross_entropy_loss"
+  loss_weight: 1
+}
+
+layer {
+  name: "loss"
+  type: "EuclideanLoss"
+  bottom: "output_Sigmoid"
+  bottom: "r_hc_features"
+  top: "l2_error"
+  loss_weight: 0
+}
