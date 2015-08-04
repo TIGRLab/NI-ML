@@ -246,7 +246,7 @@ def main(job_id, params):
     main_loop.run()
     ve = float(main_loop.log.last_epoch_row['validation_error'])
     te = float(main_loop.log.last_epoch_row['error'])
-    spearmint_loss = ve + math.abs(te - ve)
+    spearmint_loss = ve + abs(te - ve)
     print 'Spearmint Loss: {}'.format(spearmint_loss)
     return spearmint_loss
 

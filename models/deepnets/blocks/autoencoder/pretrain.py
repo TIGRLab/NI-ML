@@ -10,8 +10,8 @@ import theano
 from theano import tensor, function
 from blocks.extras.extensions.plot import Plot
 from blocks.algorithms import GradientDescent, AdaGrad, RMSProp
-from blocks.bricks import Rectifier, MLP, Logistic, Softmax, Linear
-from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate, SquaredError
+from blocks.bricks import Rectifier, MLP, Logistic, Softmax, Linear, application
+from blocks.bricks.cost import CategoricalCrossEntropy, MisclassificationRate, SquaredError, Cost, BinaryCrossEntropy
 from blocks.extensions import FinishAfter
 from blocks.extensions import Printing
 from blocks.extensions.monitoring import TrainingDataMonitoring, DataStreamMonitoring
@@ -62,7 +62,7 @@ x = tensor.concatenate([x_l, x_r], axis=1)
 # Define a feed-forward net with an input, two hidden layers, and a softmax output:
 autoencoder = MLP(activations=[
     #Rectifier(name='h1'),
-    Rectifier(name='h2'),
+    Rectifier(name='h1'),
     #Rectifier(name='h3'),
 ],
             dims=[
@@ -82,7 +82,7 @@ x_hat = Linear(input_dim=128, output_dim=input_dim[side]).apply(autoencoder.appl
 
 # Define a cost function to optimize, and a classification error rate.
 # Also apply the outputs from the net and corresponding targets:
-cost = SquaredError().apply(x, x_hat)
+cost = BinaryCrossEntropy().apply(x, x_hat)
 
 # This is the model: before applying dropout
 autoencoder = Model(cost)
@@ -112,8 +112,6 @@ algo = GradientDescent(
     step_rule=solver_type,
     params=dropout_graph.parameters,
     cost=dropout_cost)
-
-# algo.step_rule.learning_rate.name = 'learning_rate'
 
 # Data stream used for training model:
 training_stream = Flatten(
@@ -151,12 +149,6 @@ test_monitor = DataStreamMonitoring(
     prefix='test'
 )
 
-
-# param_monitor = DataStreamMonitoring(
-# variables=[algo.step_rule.learning_rate],
-# data_stream=validation_stream,
-#     prefix='params')
-
 plotting = Plot('AdniNet_{}'.format(side),
                 channels=[
                     ['entropy', 'validation_entropy'],
@@ -179,6 +171,6 @@ main = MainLoop(
         training_monitor,
         test_monitor,
         plotting,
-        Checkpoint('./models/{}net/{}'.format(side, stamp))
+        Checkpoint('./models/{}'.format(side, stamp))
     ])
 main.run()
