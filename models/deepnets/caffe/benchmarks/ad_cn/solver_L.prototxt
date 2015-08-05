@@ -1,0 +1,17 @@
+net: "net.prototxt"             # Net definition file
+solver_type: NESTEROV
+#solver_type: SGD
+test_iter: 100                       # Number of validation iterations: test_iter x test_batch_size ~= # test samples
+test_interval: 10                 # When to run validation during training
+test_compute_loss: true
+base_lr: 0.0001                        # Starting learning rate
+lr_policy: "fixed"                   # Learning rate adjustment policy
+gamma: 0.5                          # Learning rate multiplier
+stepsize: 1000                     # Iterations between learning rate change
+display: 10                       # Iterations between print output
+max_iter: 10000                     # Iterations before training finishes
+momentum: 0.9                       # Momentum!
+weight_decay: 0.0005                # Regularization term
+snapshot: 1000                      # How often to save snapshot of model
+snapshot_prefix: "./train/"       # Path to snapshot output folder
+solver_mode: GPU                    # CPU or GPU use
