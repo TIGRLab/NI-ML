@@ -1,8 +1,43 @@
+import logging
 import numpy as np
 from sklearn.preprocessing import normalize
 import tables as tb
 
-def load_matrices(source_path, fold, side, dataset, structure, use_fused=False, normalize_data=True):
+
+def balance_set(X, y):
+    """
+    Balance a dataset by using only as many samples per class as the minimum number of samples per class.
+    :param X:
+    :param y:
+    :return:
+    """
+    n_classes = np.unique(y).shape[0]
+    inds = []
+    lengths = []
+    for c in range(n_classes):
+        ind = np.where(y==c)[0]
+        inds.append(ind)
+        lengths.append(len(ind))
+    min = np.min(lengths)
+    balanced_inds = np.concatenate([ind[0:min] for ind in inds])
+    np.random.shuffle(balanced_inds) # in-place shuffle
+    return X[balanced_inds, :], y[balanced_inds]
+
+
+def load_matrices(source_path, fold, side, dataset, structure, use_fused=False, normalize_data=True, balance=True):
+    """
+    Load and return all data matrices for the given data set.
+    :param source_path:
+    :param fold:
+    :param side:
+    :param dataset:
+    :param structure:
+    :param use_fused:
+    :param normalize_data:
+    :param balance:
+    :return:
+    """
+    logging.info('Loading {} data...'.format(dataset))
     train_data_file = '{}_{}{}.h5'.format(dataset, 'train', fold)
     valid_data_file = '{}_{}{}.h5'.format(dataset, 'valid', fold)
     test_data_file = '{}_{}{}.h5'.format(dataset, 'test', fold)
@@ -29,16 +64,23 @@ def load_matrices(source_path, fold, side, dataset, structure, use_fused=False, 
         X_v = d_valid.get_node('/{}_{}_features{}'.format(side, structure.lower(), fused))[:]
         X_t = d_test.get_node('/{}_{}_features{}'.format(side, structure.lower(), fused))[:]
 
-    if normalize_data:
-        X = normalize(X)
-        X_v = normalize(X_v)
-        X_t = normalize(X_t)
-
     label_node = 'labels' if 'ad_mci_cn' in dataset else 'label'
 
     y = d.get_node('/{}_fused'.format(label_node))[:]
     y_v = d_valid.get_node('/{}_fused'.format(label_node))[:]
     y_t = d_test.get_node('/{}_fused'.format(label_node))[:]
+
+    if balance:
+        logging.info('Balancing Classes...')
+        X, y = balance_set(X, y)
+        X_v, y_v = balance_set(X, y)
+        X_t, y_t = balance_set(X, y)
+
+    if normalize_data:
+        logging.info('Normalizing Matrices...')
+        X = normalize(X)
+        X_v = normalize(X_v)
+        X_t = normalize(X_t)
 
     d.close()
     d_valid.close()

@@ -23,6 +23,7 @@ adni_datasets = ['ad_mci_cn']
 
 # Use Fused only (otherwise use candidate segmentations)
 use_fused = True
+balance = True
 
 # List of fold filename extensions to iterate over:
 # ie. folds = ['_T1', '_T2', '_T3']
@@ -55,7 +56,7 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
     """
     logging.basicConfig(level=logging.INFO)
     score = experiment(params=params, classifier_fn=pca_lr, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused)
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance)
     return score
 
 
