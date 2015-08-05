@@ -4,17 +4,17 @@
   "experiment-name": "LinearSVM",
   "likelihood": "GAUSSIAN",
   "variables": {
-    "learning_rate": {
+    "log_learning_rate": {
       "type" : "FLOAT",
       "size" : 1,
-      "min"  : 0.01,
-      "max"  : 1.0
+      "min"  : -10.0,
+      "max"  : 0.0
     },
-    "C": {
+    "log_alpha_decay": {
       "type": "FLOAT",
       "size": 1,
-      "min": 0.5,
-      "max": 2.0
+      "min": -10.0,
+      "max": -2.3
     }
   }
 }
