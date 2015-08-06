@@ -33,17 +33,22 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
     """
     logging.basicConfig(level=logging.INFO)
     score = experiment(params=params, classifier_fn=pca_lr, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance)
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=False)
     return score
 
 
 if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
+    held_out_test = True
     job_id = 0
-    arguments = {
+    params = {
         'n_components': 16,
         'C': 0.5,
     }
-    for side in sides:
-        for dataset in adni_datasets:
-            main(job_id, arguments, side, dataset)
+    if held_out_test:
+        experiment(params=params, classifier_fn=pca_lr, structure=structure, side=default_side, dataset=default_dataset,
+                    folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=True)
+    else:
+        for side in sides:
+            for dataset in adni_datasets:
+                main(job_id, params, side, dataset)

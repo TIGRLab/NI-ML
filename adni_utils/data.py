@@ -17,8 +17,8 @@ def balanced_indices(y):
         ind = np.where(y == c)[0]
         inds.append(ind)
         lengths.append(len(ind))
-    min = np.min(lengths)
-    balanced_inds = np.concatenate([ind[0:min] for ind in inds])
+    min_class_size = np.min(lengths)
+    balanced_inds = np.concatenate([np.random.choice(ind, replace=False,size=min_class_size) for ind in inds])
     np.random.shuffle(balanced_inds)  # in-place shuffle
     return balanced_inds
 

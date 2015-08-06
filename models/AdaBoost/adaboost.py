@@ -8,7 +8,7 @@ root = '/projects/francisco/repositories/NI-ML/'
 sys.path.insert(0, root)
 
 # Load repo-specific imports:
-from adni_utils.experiment import experiment, test
+from adni_utils.experiment import experiment
 from adni_utils.dataset_constants import *
 
 
@@ -36,20 +36,20 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
     """
     logging.basicConfig(level=logging.INFO)
     score = experiment(params=params, classifier_fn=adaboost, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance)
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=False)
     return score
 
 if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
-    held_out_test = True
+    held_out_test = False
     job_id = 0
     params = {
         'log_learning_rate': 0.0,
-        'n_estimators': 25
+        'n_estimators': 5
     }
     if held_out_test:
-        test(params=params, classifier_fn=adaboost, structure=structure, side=default_side, dataset=default_dataset,
-                    source_path=source_path, use_fused=use_fused, balance=balance)
+        experiment(params=params, classifier_fn=adaboost, structure=structure, side=default_side, dataset=default_dataset,
+                   folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=held_out_test)
     else:
         for side in sides:
             for dataset in adni_datasets:
