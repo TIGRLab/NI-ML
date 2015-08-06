@@ -13,7 +13,8 @@ from docopt import docopt
 
 from adni_data import split_3_way, splits, features_template, labels_template, sides, load_data, \
     balanced_mci_indexes, input_dims
-from preprocessing.conversions.adni_data import make_caffe_file, make_lr_fuel_file
+from preprocessing.conversions.adni_data import make_caffe_file
+from preprocessing.conversions.fuel_conversions import make_lr_fuel_file
 
 
 if __name__ == "__main__":

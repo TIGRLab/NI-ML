@@ -1,7 +1,7 @@
 import numpy as np
 import tables as tb
 
-from preprocessing.conversions.adni_data import make_one_sided_fuel_file
+from preprocessing.conversions.fuel_conversions import make_one_sided_fuel_file
 
 
 rescale = False

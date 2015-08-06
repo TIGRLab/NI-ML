@@ -11,7 +11,7 @@
       "max"  : 0.0
     },
     "n_estimators": {
-      "type": "FLOAT",
+      "type": "INT",
       "size": 1,
       "min": 25,
       "max": 500
