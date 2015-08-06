@@ -14,7 +14,7 @@ def transform_PCA(k, train_X, test_X):
 
     # Restore mean:
     X_rec += pca.mean_
-    print "Variance Explained: {}".format(pca.explained_variance_ratio_)
+    print "Variance Explained: {}".format(np.sum(pca.explained_variance_ratio_))
     return pca, X_rec
 
 

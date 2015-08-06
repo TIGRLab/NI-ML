@@ -31,7 +31,7 @@ for k in K_comps:
     pca, X_hat_pca = transform_PCA(k, train_X, test_fused_X)
     D = score_reconstructions(test_fused_X, X_hat_pca)
     K.append(np.mean(D))
-    V_E = np.sum(pca.explained_variance_ratio_)
+    V_E.append(np.sum(pca.explained_variance_ratio_))
 
 best_ind = np.argmax(K)
 print 'Best DICE score {} from {} components'.format(K[best_ind], K_comps[best_ind])
