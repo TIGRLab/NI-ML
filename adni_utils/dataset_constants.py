@@ -6,7 +6,7 @@ Constants used by the baseline models to load data when running experiments.
 source_path = '/projects/francisco/data/caffe/standardized/combined/'
 # Sides to iterate over;
 # ie: sides  = ['l', 'r', 'b']
-sides = ['b']
+sides = ['r']
 structure = 'hc'
 
 # Datasets to iterate over:

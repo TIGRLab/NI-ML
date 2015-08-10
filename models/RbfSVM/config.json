@@ -1,0 +1,20 @@
+{
+  "language": "PYTHON",
+  "main-file": "rbfSVM.py",
+  "experiment-name": "rbfSVM",
+  "likelihood": "GAUSSIAN",
+  "variables": {
+    "log_C": {
+      "type" : "FLOAT",
+      "size" : 1,
+      "min"  : -10.0,
+      "max"  : 7.0
+    },
+    "log_gamma": {
+      "type": "FLOAT",
+      "size": 1,
+      "min": -10.0,
+      "max": 3.0
+    }
+  }
+}

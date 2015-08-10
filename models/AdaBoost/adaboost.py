@@ -41,15 +41,15 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
 
 if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
-    held_out_test = False
+    held_out_test = True
     job_id = 0
     params = {
-        'log_learning_rate': 0.0,
-        'n_estimators': 5
+        'log_learning_rate': -4.87273849,
+        'n_estimators': 500
     }
     if held_out_test:
         experiment(params=params, classifier_fn=adaboost, structure=structure, side=default_side, dataset=default_dataset,
-                   folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=held_out_test)
+                   folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=1, test=held_out_test)
     else:
         for side in sides:
             for dataset in adni_datasets:

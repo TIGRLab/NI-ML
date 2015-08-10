@@ -2,12 +2,17 @@ import logging
 import numpy as np
 import sklearn
 from matplotlib import pyplot as plt
-from adni_utils.data import load_segmentation_dataset_matrices
-from sklearn.metrics import confusion_matrix
+from adni_utils.data import load_matrices
 
 
-def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues):
-    target_names = ['ad', 'cn', 'mci']
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, target_names=['ad', 'cn', 'mci']):
+    """
+    Sklearn-style confusion matrix.
+    :param cm:
+    :param title:
+    :param cmap:
+    :return:
+    """
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
@@ -20,6 +25,12 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues):
 
 
 def three_class_piecewise(y, y_hat):
+    """
+    Weigh AD <-> CN classification mistakes with double the weight of MCI <-> CN or AD <-> CN
+    :param y:
+    :param y_hat:
+    :return:
+    """
     if abs(y - y_hat) == 0: return 0.0
     if abs(y - y_hat) == 1: return 1.0
     if abs(y - y_hat) == 2: return 0.5
@@ -30,9 +41,17 @@ def binary_accuracy(y, y_hat):
 
 
 def three_way_accuracy(y, y_hat):
+    """
+    Return a weighted 3-class accuracy score.
+    We multiply by (6 / 5) * mean(loss) to normalize between 0 < loss <  1.0, since
+    the upper bound on the loss when scoring a class balanced set is (1 * N/3) + (1 * N/3) + (0.5 * N/3) = (5/6)*N
+    :param y:
+    :param y_hat:
+    :return:
+    """
     logging.info('Using 3-way weighted scoring metric')
     loss = [three_class_piecewise(i, j) for i, j in zip(y, y_hat)]
-    return np.mean(loss)
+    return 1 - (6 / 5.0) * np.mean(loss)
 
 
 def experiment_on_fold(params, X, X_held_out, y, y_held_out, classifier_fn, test=False):
@@ -65,49 +84,6 @@ def experiment_on_fold(params, X, X_held_out, y, y_held_out, classifier_fn, test
     return held_out_score, held_out_accuracy, held_out_predictions
 
 
-# def experiment(params, classifier_fn, structure, side, dataset, folds, source_path, use_fused, balance, n=1):
-# """
-#     Run a full experiment on the classifier returned by classifier_fn.
-#     :param params:
-#     :param classifier_fn:
-#     :param structure:
-#     :param side:
-#     :param dataset:
-#     :param folds:
-#     :param source_path:
-#     :param use_fused:
-#     :param balance:
-#     :return:
-#     """
-#     logging.basicConfig(level=logging.INFO)
-#     logging.info('Running Experiment on side {} of {} structure from {} dataset:'.format(side, structure, dataset))
-#     logging.info('Using Parameters: ')
-#     logging.info(params)
-#     total_vscore = 0.0
-#
-#     for i, fold in enumerate(folds):
-#         for j in range(n):
-#             logging.info("Fold {}:".format(i))
-#             X, X_v, X_t, y, y_v, y_t = load_segmentation_dataset_matrices(source_path, fold, side, dataset, structure, use_fused=use_fused,
-#                                                      normalize_data=True, balance=balance)
-#
-#             logging.info('Training Sample Size: {}'.format(X.shape[0]))
-#             logging.info('Validation Sample Size: {}'.format(X_v.shape[0]))
-#
-#             vscore, v_acc, v_preds = experiment_on_fold(params, X, X_v, y, y_v, classifier_fn)
-#             logging.info('Validation Score: {}'.format(vscore))
-#             total_vscore += vscore
-#
-#     # total_tscore /= len(folds)
-#     total_vscore /= len(folds) * n
-#
-#     logging.info('Avg Validation Score: {}'.format(total_vscore))
-#     logging.info('Avg Spearmint Error: {}'.format(1 - total_vscore))
-#
-#     # Minimize error (for spearmint):
-#     return (1.0 - total_vscore)
-
-
 def experiment(params, classifier_fn, structure, side, dataset, folds, source_path, use_fused, balance, n=1,
                test=False):
     """
@@ -135,14 +111,14 @@ def experiment(params, classifier_fn, structure, side, dataset, folds, source_pa
     for j, fold in enumerate(folds):
         for i in range(n):
             logging.info('Trial {} on fold {}'.format(i, j))
-            X, X_v, X_t, y, y_v, y_t = load_segmentation_dataset_matrices(source_path,
-                                                                          fold=fold,
-                                                                          side=side,
-                                                                          dataset=dataset,
-                                                                          structure=structure,
-                                                                          use_fused=use_fused,
-                                                                          normalize_data=True,
-                                                                          balance=balance)
+            X, X_v, X_t, y, y_v, y_t = load_matrices(source_path=source_path,
+                                                     fold=fold,
+                                                     side=side,
+                                                     dataset=dataset,
+                                                     structure=structure,
+                                                     use_fused=use_fused,
+                                                     normalize_data=True,
+                                                     balance=balance)
             if test:
                 X_held_out = X_t
                 y_held_out = y_t
@@ -154,7 +130,6 @@ def experiment(params, classifier_fn, structure, side, dataset, folds, source_pa
 
             logging.info('Training Sample Size: {}'.format(X.shape[0]))
             logging.info('{} Sample Size: {}'.format(held_out, X_held_out.shape[0]))
-
 
             held_out_score, held_out_accuracy, held_out_predictions = experiment_on_fold(params=params,
                                                                                          X=X,
@@ -172,19 +147,23 @@ def experiment(params, classifier_fn, structure, side, dataset, folds, source_pa
     var_score = np.var(score)
     mean_acc = np.mean(acc)
     var_acc = np.var(acc)
+
+
     preds = np.concatenate(preds)
     labels = np.concatenate(labels)
 
-    logging.info('Held out Test Set Mean Accuracy on {} trials: {}'.format(n, mean_acc))
-    logging.info('Held out Test Set Accuracy Variance on {} trials: {}'.format(n, var_acc))
-    logging.info('Held out Test Set Mean Weighted Error on {} trials: {}'.format(n, mean_score))
-    logging.info('Held out Test Set Weighted Error Variance on {} trials: {}'.format(n, var_score))
+    logging.info('Held out Set Mean Classification Accuracy on {} trials: {}'.format(n, mean_acc))
+    logging.info('Held out Set Classification Accuracy Variance on {} trials: {}'.format(n, var_acc))
+    logging.info('Held out Set Mean Class-Weighted Accuracy on {} trials: {}'.format(n, mean_score))
+    logging.info('Held out Set Weighted Class-Weighted Accuracy Variance on {} trials: {}'.format(n, var_score))
+    logging.info('Parameters used on this run: ')
+    logging.info(params)
 
     if test:
         cm = sklearn.metrics.confusion_matrix(labels, preds)
         cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         print cm_normalized
-        plot_confusion_matrix(cm_normalized)
+        plot_confusion_matrix(cm_normalized, target_names=['ad', 'cn', 'mci'])
         plt.show()
 
-    return (1 - mean_score)
+    return 1 - mean_score

@@ -1,0 +1,20 @@
+{
+  "language": "PYTHON",
+  "main-file": "linearSVM.py",
+  "experiment-name": "LinearSVM",
+  "likelihood": "GAUSSIAN",
+  "variables": {
+    "log_learning_rate": {
+      "type" : "FLOAT",
+      "size" : 1,
+      "min"  : -15.0,
+      "max"  : 0.0
+    },
+    "log_alpha_decay": {
+      "type": "FLOAT",
+      "size": 1,
+      "min": -10.0,
+      "max": -2.3
+    }
+  }
+}
