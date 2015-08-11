@@ -5,39 +5,39 @@ from matplotlib import pyplot as plt
 from adni_utils.data import load_matrices
 
 
-def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, target_names=['ad', 'cn', 'mci']):
-    """
-    Sklearn-style confusion matrix.
-    :param cm:
-    :param title:
-    :param cmap:
-    :return:
-    """
-    plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title)
-    plt.colorbar()
-    tick_marks = np.arange(len(target_names))
-    plt.xticks(tick_marks, target_names, rotation=45)
-    plt.yticks(tick_marks, target_names)
-    plt.tight_layout()
-    plt.ylabel('True label')
-    plt.xlabel('Predicted label')
-
-
-def three_class_piecewise(y, y_hat):
-    """
-    Weigh AD <-> CN classification mistakes with double the weight of MCI <-> CN or AD <-> CN
-    :param y:
-    :param y_hat:
-    :return:
-    """
-    if abs(y - y_hat) == 0: return 0.0
-    if abs(y - y_hat) == 1: return 1.0
-    if abs(y - y_hat) == 2: return 0.5
-
-
 def binary_accuracy(y, y_hat):
     return sklearn.metrics.accuracy_score(y, y_hat)
+
+
+def metrics(classifier, X, y):
+    """
+    Return some metrics for the trained classifier on some data.
+    :param classifier:
+    :param X:
+    :param y:
+    :return:
+    """
+    y_hat = classifier.predict(X)
+    acc = sklearn.metrics.accuracy_score(y, y_hat)
+    prec = sklearn.metrics.precision_score(y, y_hat)
+    rec = sklearn.metrics.recall_score(y, y_hat)
+    f1 = sklearn.metrics.f1_score(y, y_hat)
+    return acc, prec, rec, f1
+
+
+def spearmint_score_fn(classifier, train_acc, val_acc, n_classes):
+    """
+    Loss function used for Spearmint optimization.
+
+    Lower is better. :)
+    :param train_acc:
+    :param val_acc:
+    :return:
+    """
+    fit_score = abs(train_acc - val_acc)
+    val_error = 1 - val_acc
+    spearmint_score = fit_score + val_error
+    return spearmint_score
 
 
 def three_way_accuracy(y, y_hat):
@@ -49,7 +49,18 @@ def three_way_accuracy(y, y_hat):
     :param y_hat:
     :return:
     """
-    logging.info('Using 3-way weighted scoring metric')
+
+    def three_class_piecewise(y, y_hat):
+        """
+        Weigh AD <-> CN classification mistakes with double the weight of MCI <-> CN or AD <-> CN
+        :param y:
+        :param y_hat:
+        :return:
+        """
+        if abs(y - y_hat) == 0: return 0.0
+        if abs(y - y_hat) == 1: return 1.0
+        if abs(y - y_hat) == 2: return 0.5
+
     loss = [three_class_piecewise(i, j) for i, j in zip(y, y_hat)]
     return 1 - (6 / 5.0) * np.mean(loss)
 
@@ -69,25 +80,43 @@ def experiment_on_fold(params, X, X_held_out, y, y_held_out, classifier_fn, test
     n_classes = np.unique(y).shape[0]
     classifier, model = classifier_fn(params, n_classes)
 
-    logging.info('Fitting {} on {} classes'.format(model, n_classes))
     classifier.fit(X, y)
-    logging.info('{} accuracy on training data.'.format(classifier.score(X, y)))
-    trial = 'Validating' if not test else 'Testing'
-    logging.info('{} {} on held-out set'.format(trial, model))
 
+    # acc, prec, rec, f1 = metrics(classifier, X_held_out, y_held_out)
+    training_accuracy = classifier.score(X, y)
     held_out_predictions = classifier.predict(X_held_out)
     held_out_accuracy = classifier.score(X_held_out, y_held_out)
-    logging.info('{} accuracy on held-out data.'.format(held_out_accuracy))
-    score_fn = binary_accuracy if n_classes == 2 else three_way_accuracy
-    held_out_score = score_fn(y_held_out, held_out_predictions)
+    spearmint_score = spearmint_score_fn(classifier, training_accuracy, held_out_accuracy, n_classes)
 
-    return held_out_score, held_out_accuracy, held_out_predictions
+    return spearmint_score, held_out_accuracy, held_out_predictions, training_accuracy
 
 
-def experiment(params, classifier_fn, structure, side, dataset, folds, source_path, use_fused, balance, n=1,
-               test=False):
+def unpack_experimental_params(**kwargs):
     """
-    Test the classifier's predictive ability on the held-out test data set by averaging results from n trials.
+    Unpack keyword arguments for experiment method.
+    :param kwargs:
+    :return:
+    """
+    source_path = kwargs.get('source_path')
+    params = kwargs.get('params')
+    classifier_fn = kwargs.get('classifier_fn')
+    dataset = kwargs.get('dataset')
+    load_fn = kwargs.get('load_fn', load_matrices)
+    structure = kwargs.get('structure')
+    side = kwargs.get('side')
+    balance = kwargs.get('balance', True)
+    use_fused = kwargs.get('use_fused', True)
+    n = kwargs.get('n', 1)
+    normalize_data = kwargs.get('normalize_data', True)
+    test = kwargs.get('test', False)
+    folds = kwargs.get('folds', [''])
+
+    return source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test
+
+
+def experiment(**kwargs):
+    """
+    Train and test the classifier's predictive ability on the held-out validation data set by averaging results from n trials.
     :param params:
     :param classifier_fn:
     :param structure:
@@ -97,73 +126,54 @@ def experiment(params, classifier_fn, structure, side, dataset, folds, source_pa
     :param source_path:
     :param use_fused:
     :param balance:
-    :return:
+    :return: X, X_valid, X_test, y, y_valid, y_test
     """
-    logging.basicConfig(level=logging.INFO)
-    logging.info('Testing Model on side {} of test dataset {}'.format(side, dataset))
-    logging.info('Using Parameters: ')
-    logging.info(params)
+    logfile = kwargs.get('logfile', './output/spearmint.log')
+    logging.basicConfig(level=logging.INFO, format="%(message)s", filemode='a', filename=logfile)
+
+    source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test = unpack_experimental_params(
+        **kwargs)
+
     score = []
+    train = []
     acc = []
     preds = []
     labels = []
 
     for j, fold in enumerate(folds):
         for i in range(n):
-            logging.info('Trial {} on fold {}'.format(i, j))
-            X, X_v, X_t, y, y_v, y_t = load_matrices(source_path=source_path,
-                                                     fold=fold,
-                                                     side=side,
-                                                     dataset=dataset,
-                                                     structure=structure,
-                                                     use_fused=use_fused,
-                                                     normalize_data=True,
-                                                     balance=balance)
-            if test:
-                X_held_out = X_t
-                y_held_out = y_t
-            else:
-                X_held_out = X_v
-                y_held_out = y_v
+            X, X_held_out, _, y, y_held_out, _, var_names = load_fn(source_path=source_path,
+                                                                    fold=fold,
+                                                                    side=side,
+                                                                    dataset=dataset,
+                                                                    structure=structure,
+                                                                    use_fused=use_fused,
+                                                                    normalize_data=True,
+                                                                    balance=balance)
 
-            held_out = 'Test' if test else 'Validation'
+            held_out_spearmint_score, held_out_accuracy, held_out_predictions, training_accuracy = experiment_on_fold(
+                params=params,
+                X=X,
+                X_held_out=X_held_out,
+                y=y,
+                y_held_out=y_held_out,
+                classifier_fn=classifier_fn,
+                test=test)
 
-            logging.info('Training Sample Size: {}'.format(X.shape[0]))
-            logging.info('{} Sample Size: {}'.format(held_out, X_held_out.shape[0]))
-
-            held_out_score, held_out_accuracy, held_out_predictions = experiment_on_fold(params=params,
-                                                                                         X=X,
-                                                                                         X_held_out=X_held_out,
-                                                                                         y=y,
-                                                                                         y_held_out=y_held_out,
-                                                                                         classifier_fn=classifier_fn,
-                                                                                         test=test)
-            score.append(held_out_score)
+            score.append(held_out_spearmint_score)
             acc.append(held_out_accuracy)
             preds.append(held_out_predictions)
             labels.append(y_held_out)
+            train.append(training_accuracy)
 
-    mean_score = np.mean(score)
-    var_score = np.var(score)
-    mean_acc = np.mean(acc)
-    var_acc = np.var(acc)
+    mean_spearmint_score = np.mean(score)
+    std_score = np.std(score)
+    mean_val = np.mean(acc)
+    std_val = np.std(acc)
+    mean_train = np.mean(training_accuracy)
+    std_train = np.std(training_accuracy)
 
-
-    preds = np.concatenate(preds)
-    labels = np.concatenate(labels)
-
-    logging.info('Held out Set Mean Classification Accuracy on {} trials: {}'.format(n, mean_acc))
-    logging.info('Held out Set Classification Accuracy Variance on {} trials: {}'.format(n, var_acc))
-    logging.info('Held out Set Mean Class-Weighted Accuracy on {} trials: {}'.format(n, mean_score))
-    logging.info('Held out Set Weighted Class-Weighted Accuracy Variance on {} trials: {}'.format(n, var_score))
-    logging.info('Parameters used on this run: ')
-    logging.info(params)
-
-    if test:
-        cm = sklearn.metrics.confusion_matrix(labels, preds)
-        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-        print cm_normalized
-        plot_confusion_matrix(cm_normalized, target_names=['ad', 'cn', 'mci'])
-        plt.show()
-
-    return 1 - mean_score
+    param_log = map(lambda x: x[0] if isinstance(x, np.ndarray) else x, params.values())
+    logging.info('{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t'.format(mean_spearmint_score, std_score, mean_val, std_val, mean_train,
+                                             std_train) + ''.join('{:.8f}\t'.format(p) for p in param_log))
+    return mean_spearmint_score

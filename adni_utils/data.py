@@ -81,7 +81,7 @@ def load_segmentations(**kwargs):
     y = train_data.get_node('/{}_fused'.format(label_node))[:]
     y_v = valid_data.get_node('/{}_fused'.format(label_node))[:]
     y_t = test_data.get_node('/{}_fused'.format(label_node))[:]
-    return X, X_t, X_v, y, y_t, y_v
+    return X, X_v, X_t, y, y_v, y_t
 
 
 def load_cortical(**kwargs):
@@ -93,19 +93,38 @@ def load_cortical(**kwargs):
     train_data = kwargs['train_data']
     test_data = kwargs['test_data']
     valid_data = kwargs['valid_data']
-    side = kwargs['side']
-    structure = kwargs['structure']
+    omit_class = kwargs.get('omit_class', 2)
 
-    X = train_data.get_node('/features'.format(side, structure.lower()))[:]
-    X_v = valid_data.get_node('/features'.format(side, structure.lower()))[:]
-    X_t = test_data.get_node('/features'.format(side, structure.lower()))[:]
+    X = train_data.get_node('/features')[:]
+    X_v = valid_data.get_node('/features')[:]
+    X_t = test_data.get_node('/features')[:]
     y = train_data.get_node('/labels')[:]
     y_v = valid_data.get_node('/labels')[:]
     y_t = test_data.get_node('/labels')[:]
-    return X, X_t, X_v, y, y_t, y_v
+
+    if omit_class:
+        inds = np.where(y != omit_class)
+        inds_v = np.where(y_v != omit_class)
+        inds_t = np.where(y_t != omit_class)
+        X = X[inds]
+        X_v = X_v[inds_v]
+        X_t = X_t[inds_t]
+
+        if omit_class == 0:
+            trans_fn = lambda x: x - 1
+        elif omit_class == 1:
+            trans_fn = lambda x: x / 2
+        else:
+            trans_fn = lambda x: x
+
+        y = trans_fn(y[inds])
+        y_v = trans_fn(y_v[inds_v])
+        y_t = trans_fn(y_t[inds_t])
+
+    return X, X_v, X_t, y, y_v, y_t
 
 
-def load_matrices(source_path, fold, side, dataset, structure, use_fused=False,
+def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fused=False,
                   normalize_data=True, balance=True):
     """
     Load and return all data matrices for the given data set.
@@ -121,7 +140,7 @@ def load_matrices(source_path, fold, side, dataset, structure, use_fused=False,
     """
     data_fns = {
         'ad_mci_cn': load_segmentations,
-        'ADNI_cortical_Features': load_cortical,
+        'ADNI_Cortical_Features': load_cortical,
     }
 
     # balanced = '_balanced' if balance else ''
@@ -136,19 +155,15 @@ def load_matrices(source_path, fold, side, dataset, structure, use_fused=False,
 
     matrix_fn = data_fns[dataset]
 
-    # Specific to segmentation:
-    X, X_t, X_v, y, y_t, y_v = matrix_fn(train_data=d, test_data=d_test, valid_data=d_valid, dataset=dataset, side=side,
+    X, X_v, X_t, y, y_v, y_t = matrix_fn(train_data=d, test_data=d_test, valid_data=d_valid, dataset=dataset, side=side,
                                          structure=structure, use_fused=use_fused)
 
-    # Non-specific:
     if balance:
-        logging.info('Balancing Classes...')
         X, y = balance_set(X, y)
         X_v, y_v = balance_set(X_v, y_v)
         X_t, y_t = balance_set(X_t, y_t, sample=False) # Deterministic balanced split for testing/comparisons?
 
     if normalize_data:
-        logging.info('Normalizing Matrices...')
         X = normalize(X)
         X_v = normalize(X_v)
         X_t = normalize(X_t)
@@ -157,4 +172,6 @@ def load_matrices(source_path, fold, side, dataset, structure, use_fused=False,
     d_valid.close()
     d_test.close()
 
-    return X, X_v, X_t, y, y_v, y_t
+    default_var_names = [str(x) for x in range(X.shape[1])]
+
+    return X, X_v, X_t, y, y_v, y_t, default_var_names

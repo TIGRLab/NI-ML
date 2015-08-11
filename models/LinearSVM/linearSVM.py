@@ -18,6 +18,7 @@ sys.path.insert(0, root)
 # Load repo-specific imports:
 from adni_utils.experiment import experiment
 from adni_utils.dataset_constants import *
+from adni_utils.evaluate_model import evaluate
 
 
 def linearSVM(params, n_classes):
@@ -34,27 +35,20 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
     :param params:
     :return:
     """
-    logging.basicConfig(level=logging.INFO)
     score = experiment(params=params, classifier_fn=linearSVM, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials)
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
+                       omit_class=omit_class)
     return score
 
 
 if __name__ == "__main__":
     #arguments = docopt(__doc__)
-    held_out_test = True
-    job_id = 0
     params = {
-        'log_alpha_decay': -1.69406367,
-        'log_learning_rate': -1.69406367
+        'log_alpha_decay': -2.3,
+        'log_learning_rate': -15.0
     }
-    if held_out_test:
-        experiment(params=params, classifier_fn=linearSVM, structure=structure, side=default_side, dataset=default_dataset,
-                    folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=True)
-    else:
-        for side in sides:
-            for dataset in adni_datasets:
-                main(job_id, params, side, dataset)
+    evaluate(params=params, classifier_fn=linearSVM, dataset=default_dataset,
+                       source_path=source_path, n=n_trials, omit_class=omit_class)
 
 
 
