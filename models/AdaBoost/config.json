@@ -1,14 +1,14 @@
 {
   "language": "PYTHON",
   "main-file": "adaboost.py",
-  "experiment-name": "AdaBoost",
+  "experiment-name": "ADNI-AdaBoost",
   "likelihood": "GAUSSIAN",
   "variables": {
     "log_learning_rate": {
       "type" : "FLOAT",
       "size" : 1,
       "min"  : -10.0,
-      "max"  : 0.0
+      "max"  : 5.0
     },
     "n_estimators": {
       "type": "INT",

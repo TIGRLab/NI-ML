@@ -1,13 +1,13 @@
 {
   "language": "PYTHON",
   "main-file": "rbfSVM.py",
-  "experiment-name": "rbfSVM",
+  "experiment-name": "ADNI-rbfSVM",
   "likelihood": "GAUSSIAN",
   "variables": {
     "log_C": {
       "type" : "FLOAT",
       "size" : 1,
-      "min"  : -10.0,
+      "min"  : -15.0,
       "max"  : 7.0
     },
     "log_gamma": {

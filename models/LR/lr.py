@@ -24,14 +24,13 @@ def pca_lr(params, n_classes):
     return pca_lr_classifier, 'PCA Logistic Regression'
 
 
-def main(job_id, params, side=default_side, dataset=default_dataset):
+def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
     """
     Main hook for Spearmint.
     :param job_id:
     :param params:
     :return:
     """
-    logging.basicConfig(level=logging.INFO)
     score = experiment(params=params, classifier_fn=pca_lr, structure=structure, side=side, dataset=dataset,
                        folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=False)
     return score
@@ -46,7 +45,7 @@ if __name__ == "__main__":
         'C': 0.5,
     }
     if held_out_test:
-        experiment(params=params, classifier_fn=pca_lr, structure=structure, side=default_side, dataset=default_dataset,
+        experiment(params=params, classifier_fn=pca_lr, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
                     folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=True)
     else:
         for side in sides:

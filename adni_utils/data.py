@@ -1,7 +1,9 @@
 import logging
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import normalize
 import tables as tb
+from adni_utils.dataset_constants import cortical_variables
 
 
 def balanced_indices(y, sample=True):
@@ -37,7 +39,6 @@ def balance_set(X, y, sample=True):
     return X[inds, :], y[inds]
 
 
-# def load_segmentations(train_data, test_data, valid_data, dataset, side, structure, use_fused):
 def load_segmentations(**kwargs):
     """
 
@@ -81,7 +82,10 @@ def load_segmentations(**kwargs):
     y = train_data.get_node('/{}_fused'.format(label_node))[:]
     y_v = valid_data.get_node('/{}_fused'.format(label_node))[:]
     y_t = test_data.get_node('/{}_fused'.format(label_node))[:]
-    return X, X_v, X_t, y, y_v, y_t
+
+    default_var_names = [str(x) for x in range(X.shape[1])]
+
+    return X, X_v, X_t, y, y_v, y_t, default_var_names
 
 
 def load_cortical(**kwargs):
@@ -121,11 +125,12 @@ def load_cortical(**kwargs):
         y_v = trans_fn(y_v[inds_v])
         y_t = trans_fn(y_t[inds_t])
 
-    return X, X_v, X_t, y, y_v, y_t
+    return X, X_v, X_t, y, y_v, y_t, cortical_variables
 
 
-def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fused=False,
-                  normalize_data=True, balance=True):
+# def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fused=False,
+#                   normalize_data=True, balance=True):
+def load_matrices(**kwargs):
     """
     Load and return all data matrices for the given data set.
     :param source_path:
@@ -139,9 +144,17 @@ def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fus
     :return:
     """
     data_fns = {
+        'mci_cn': load_segmentations,
+        'ad_cn': load_segmentations,
         'ad_mci_cn': load_segmentations,
         'ADNI_Cortical_Features': load_cortical,
     }
+    dataset = kwargs.get('dataset')
+    fold = kwargs.get('fold')
+    source_path = kwargs.get('source_path')
+    normalize_data = kwargs.get('normalize_data', True)
+    balance = kwargs.get('balance', True)
+
 
     # balanced = '_balanced' if balance else ''
 
@@ -155,8 +168,7 @@ def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fus
 
     matrix_fn = data_fns[dataset]
 
-    X, X_v, X_t, y, y_v, y_t = matrix_fn(train_data=d, test_data=d_test, valid_data=d_valid, dataset=dataset, side=side,
-                                         structure=structure, use_fused=use_fused)
+    X, X_v, X_t, y, y_v, y_t, var_names = matrix_fn(train_data=d, test_data=d_test, valid_data=d_valid, **kwargs)
 
     if balance:
         X, y = balance_set(X, y)
@@ -172,6 +184,4 @@ def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fus
     d_valid.close()
     d_test.close()
 
-    default_var_names = [str(x) for x in range(X.shape[1])]
-
-    return X, X_v, X_t, y, y_v, y_t, default_var_names
+    return X, X_v, X_t, y, y_v, y_t, var_names

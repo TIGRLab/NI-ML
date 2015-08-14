@@ -43,15 +43,23 @@ def evaluate(**kwargs):
     source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test = unpack_experimental_params(
         **kwargs)
 
-    class_names = kwargs.get('class_names', class_name_map[dataset])
-    omit_class = kwargs.get('omit_class', 2)
-    if omit_class:
+    print 'Running model on {} data test set for {} trials'.format(dataset, n)
+
+
+    class_names = kwargs.get('class_names')
+    if not class_names:
+        class_names = class_name_map[dataset]
+    omit_class = kwargs.get('omit_class')
+    if not omit_class == None: # I know: awkward.
+        print 'Omitting class {} ({})'.format(omit_class, class_names[omit_class])
         del class_names[omit_class]
     model_metrics_fn = kwargs.get('model_metrics')
     train = []
     preds = []
     labels = []
+    classifiers = []
 
+    accs = []
     for j, fold in enumerate(folds):
         for i in range(n):
             X, X_v, X_t, y, y_v, y_t, var_names = load_fn(source_path=source_path,
@@ -71,17 +79,19 @@ def evaluate(**kwargs):
             y_hat = classifier.predict(X_t)
             acc, prec, rec, f1 = metrics(classifier, X_t, y_t)
             print '{} {} {} {}'.format(acc, prec, rec, f1)
-
+            accs.append(acc)
             preds.append(y_hat)
             labels.append(y_t)
             train.append(training_accuracy)
+            classifiers.append(classifier)
 
 
     preds = np.concatenate(preds)
     labels = np.concatenate(labels)
 
     print
-    print 'Acc: {}'.format(sklearn.metrics.accuracy_score(labels, preds))
+    print 'Mean Acc: {}'.format(np.mean(accs))
+    print 'Std Acc: {}'.format(np.std(accs))
     print sklearn.metrics.classification_report(labels, preds,
                                         target_names=class_names)
 
@@ -92,7 +102,7 @@ def evaluate(**kwargs):
     print params
 
     if model_metrics_fn:
-        model_metrics_fn(classifier, var_names)
+        model_metrics_fn(classifiers, var_names)
 
     print 'CM:'
     print cm_normalized

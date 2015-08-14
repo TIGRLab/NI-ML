@@ -24,11 +24,11 @@ from adni_utils.evaluate_model import evaluate
 def linearSVM(params, n_classes):
     alpha_decay = np.exp(params['log_alpha_decay'])
     lr = np.exp(params['log_learning_rate'])
-    classifier = SGDClassifier(eta0=lr, alpha=alpha_decay, loss='hinge', penalty='l2', class_weight='auto', n_iter=20)
+    classifier = SGDClassifier(eta0=lr, alpha=alpha_decay, loss='hinge', penalty='l2', class_weight='auto', n_iter=200)
     return classifier, 'Linear SVM'
 
 
-def main(job_id, params, side=default_side, dataset=default_dataset):
+def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
     """
     Main hook for Spearmint.
     :param job_id:
@@ -44,11 +44,12 @@ def main(job_id, params, side=default_side, dataset=default_dataset):
 if __name__ == "__main__":
     #arguments = docopt(__doc__)
     params = {
-        'log_alpha_decay': -2.3,
-        'log_learning_rate': -15.0
+        'log_learning_rate': -0.80841064,
+        'log_alpha_decay': -13.08461304,
     }
-    evaluate(params=params, classifier_fn=linearSVM, dataset=default_dataset,
-                       source_path=source_path, n=n_trials, omit_class=omit_class)
+    evaluate(params=params, classifier_fn=linearSVM, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
+                       omit_class=omit_class)
 
 
 

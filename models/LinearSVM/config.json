@@ -1,7 +1,7 @@
 {
   "language": "PYTHON",
   "main-file": "linearSVM.py",
-  "experiment-name": "LinearSVM",
+  "experiment-name": "ADNI-LinearSVM",
   "likelihood": "GAUSSIAN",
   "variables": {
     "log_learning_rate": {
@@ -13,7 +13,7 @@
     "log_alpha_decay": {
       "type": "FLOAT",
       "size": 1,
-      "min": -10.0,
+      "min": -15.0,
       "max": -2.3
     }
   }

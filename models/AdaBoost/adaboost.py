@@ -3,6 +3,7 @@ import logging
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
+from tabulate import tabulate
 
 root = '/projects/francisco/repositories/NI-ML/'
 sys.path.insert(0, root)
@@ -31,16 +32,26 @@ def adaboost(params, n_classes):
     return classifier, 'AdaBoost'
 
 
-def model_metrics(classifier, var_names):
-    print 'Feature Importances:'
+def model_metrics(classifiers, var_names):
+    print 'Gini Importances:'
 
-    feats = zip(classifier.feature_importances_, var_names)
-    feats.sort(reverse=True)
-    for var, value in feats[0:10]:
-        print '{} {}'.format(var, value)
+    importances = np.zeros(shape=(len(classifiers), len(var_names)))
+    for i, classifier in enumerate(classifiers):
+        importances[i,:] = classifier.feature_importances_
 
 
-def main(job_id, params, side=default_side, dataset=default_dataset):
+    mean_importances = np.mean(importances,axis=0)
+    std_importances = np.std(importances, axis=0)
+    feats = zip(var_names, mean_importances, std_importances)
+
+    # Remove non-important feats:
+    feats = [feat for feat in feats if feat[1] > 0.0]
+
+    feats.sort(reverse=True, key=lambda x: x[1])
+    print tabulate(feats, headers=['Variable', 'Mean', 'Std'])
+
+
+def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
     """
     Main hook for Spearmint.
     :param job_id:
@@ -57,9 +68,10 @@ if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
     job_id = 0
     params = {
-        'log_learning_rate': -3.13853947,
-        'n_estimators': 10,
-        'max_depth': 3
+        'n_estimators': 6,
+        'log_learning_rate': 0.0,
+        'max_depth': 1
     }
-    evaluate(params=params, classifier_fn=adaboost, dataset=default_dataset,
-                       source_path=source_path, n=n_trials, model_metrics=model_metrics, omit_class=omit_class)
+    evaluate(params=params, classifier_fn=adaboost, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
+                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
+                       test=False, omit_class=omit_class, model_metrics=model_metrics)

@@ -65,7 +65,7 @@ def three_way_accuracy(y, y_hat):
     return 1 - (6 / 5.0) * np.mean(loss)
 
 
-def experiment_on_fold(params, X, X_held_out, y, y_held_out, classifier_fn, test=False):
+def experiment_on_fold(X, X_held_out, y, y_held_out, **kwargs):
     """
     Fit a classifier on the given training dataset and score it on a validation set.
     :param params:
@@ -77,12 +77,14 @@ def experiment_on_fold(params, X, X_held_out, y, y_held_out, classifier_fn, test
     :param test:
     :return:
     """
+    params = kwargs.get('params')
+    classifier_fn = kwargs.get('classifier_fn')
+
     n_classes = np.unique(y).shape[0]
     classifier, model = classifier_fn(params, n_classes)
 
     classifier.fit(X, y)
 
-    # acc, prec, rec, f1 = metrics(classifier, X_held_out, y_held_out)
     training_accuracy = classifier.score(X, y)
     held_out_predictions = classifier.predict(X_held_out)
     held_out_accuracy = classifier.score(X_held_out, y_held_out)
@@ -131,8 +133,10 @@ def experiment(**kwargs):
     logfile = kwargs.get('logfile', './output/spearmint.log')
     logging.basicConfig(level=logging.INFO, format="%(message)s", filemode='a', filename=logfile)
 
-    source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test = unpack_experimental_params(
-        **kwargs)
+    load_fn = kwargs.get('load_fn', load_matrices)
+    folds = kwargs.get('folds', [''])
+    params = kwargs.get('params')
+    n = kwargs.get('n', 1)
 
     score = []
     train = []
@@ -142,23 +146,14 @@ def experiment(**kwargs):
 
     for j, fold in enumerate(folds):
         for i in range(n):
-            X, X_held_out, _, y, y_held_out, _, var_names = load_fn(source_path=source_path,
-                                                                    fold=fold,
-                                                                    side=side,
-                                                                    dataset=dataset,
-                                                                    structure=structure,
-                                                                    use_fused=use_fused,
-                                                                    normalize_data=True,
-                                                                    balance=balance)
+            X, X_held_out, _, y, y_held_out, _, var_names = load_fn(fold=fold, **kwargs)
 
             held_out_spearmint_score, held_out_accuracy, held_out_predictions, training_accuracy = experiment_on_fold(
-                params=params,
                 X=X,
                 X_held_out=X_held_out,
                 y=y,
                 y_held_out=y_held_out,
-                classifier_fn=classifier_fn,
-                test=test)
+                **kwargs)
 
             score.append(held_out_spearmint_score)
             acc.append(held_out_accuracy)
@@ -173,7 +168,11 @@ def experiment(**kwargs):
     mean_train = np.mean(training_accuracy)
     std_train = np.std(training_accuracy)
 
-    param_log = map(lambda x: x[0] if isinstance(x, np.ndarray) else x, params.values())
+    # alphabetize params:
+    alpha_params = params.items()
+    alpha_params.sort()
+
+    param_log = map(lambda x: x[0] if isinstance(x, np.ndarray) else x, zip(*alpha_params)[1])
     logging.info('{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t'.format(mean_spearmint_score, std_score, mean_val, std_val, mean_train,
                                              std_train) + ''.join('{:.8f}\t'.format(p) for p in param_log))
     return mean_spearmint_score

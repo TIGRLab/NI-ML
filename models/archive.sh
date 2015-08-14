@@ -10,7 +10,7 @@ MODEL=$1
 TRIAL=$2
 DATE=`date +%Y-%m-%d-%H-%M`
 
-MODEL_FILES=$MODEL/output/*.out
+MODEL_FILES=$MODEL/output/spearmint.log
 
 if [ ! -d "$MODEL/archive/" ];
 then
