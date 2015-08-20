@@ -175,4 +175,6 @@ def experiment(**kwargs):
     param_log = map(lambda x: x[0] if isinstance(x, np.ndarray) else x, zip(*alpha_params)[1])
     logging.info('{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t'.format(mean_spearmint_score, std_score, mean_val, std_val, mean_train,
                                              std_train) + ''.join('{:.8f}\t'.format(p) for p in param_log))
-    return mean_spearmint_score
+
+    # Final spearmint score has std term: more stable algos are better
+    return mean_spearmint_score + std_val

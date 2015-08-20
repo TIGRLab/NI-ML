@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import normalize
 import tables as tb
-from adni_utils.dataset_constants import cortical_variables
 
 
 def balanced_indices(y, sample=True):
@@ -55,6 +54,7 @@ def load_segmentations(**kwargs):
     test_data = kwargs['test_data']
     valid_data = kwargs['valid_data']
     dataset = kwargs['dataset']
+    omit_class = kwargs['omit_class']
     side = kwargs['side']
     structure = kwargs['structure']
     use_fused = kwargs['use_fused']
@@ -77,7 +77,7 @@ def load_segmentations(**kwargs):
         X_v = valid_data.get_node('/{}_{}_features{}'.format(side, structure.lower(), fused))[:]
         X_t = test_data.get_node('/{}_{}_features{}'.format(side, structure.lower(), fused))[:]
 
-    label_node = 'labels' if 'ad_mci_cn' in dataset else 'label'
+    label_node = 'labels' if omit_class == None else 'label'
 
     y = train_data.get_node('/{}_fused'.format(label_node))[:]
     y_v = valid_data.get_node('/{}_fused'.format(label_node))[:]
@@ -97,7 +97,11 @@ def load_cortical(**kwargs):
     train_data = kwargs['train_data']
     test_data = kwargs['test_data']
     valid_data = kwargs['valid_data']
-    omit_class = kwargs.get('omit_class', 2)
+    omit_class = kwargs.get('omit_class')
+
+    ct_data = pd.read_csv('/projects/nikhil/ADNI_prediction/input_datasets/CT/scans_AAL.csv')
+    cortical_variables = list(ct_data.columns[1:])
+
 
     X = train_data.get_node('/features')[:]
     X_v = valid_data.get_node('/features')[:]
@@ -106,7 +110,7 @@ def load_cortical(**kwargs):
     y_v = valid_data.get_node('/labels')[:]
     y_t = test_data.get_node('/labels')[:]
 
-    if omit_class:
+    if omit_class != None:
         inds = np.where(y != omit_class)
         inds_v = np.where(y_v != omit_class)
         inds_t = np.where(y_t != omit_class)
@@ -128,8 +132,6 @@ def load_cortical(**kwargs):
     return X, X_v, X_t, y, y_v, y_t, cortical_variables
 
 
-# def load_matrices(source_path, fold, dataset, side=None, structure=None, use_fused=False,
-#                   normalize_data=True, balance=True):
 def load_matrices(**kwargs):
     """
     Load and return all data matrices for the given data set.
@@ -143,24 +145,36 @@ def load_matrices(**kwargs):
     :param balance:
     :return:
     """
+    def map_hc_class_to_file(omit_class):
+        if omit_class == None: return 'ad_mci_cn'
+        if omit_class == 0: return 'mci_cn'
+        if omit_class == 1: return 'ad_mci'
+        if omit_class == 2: return 'ad_cn'
+
     data_fns = {
         'mci_cn': load_segmentations,
         'ad_cn': load_segmentations,
         'ad_mci_cn': load_segmentations,
         'ADNI_Cortical_Features': load_cortical,
     }
+
     dataset = kwargs.get('dataset')
     fold = kwargs.get('fold')
-    source_path = kwargs.get('source_path')
+    source_path = kwargs.get('source_path', )
     normalize_data = kwargs.get('normalize_data', True)
     balance = kwargs.get('balance', True)
+    omit_class = kwargs.get('omit_class', None)
 
+    if 'hc' in dataset:
+        filename = map_hc_class_to_file(omit_class)
+    else:
+        filename = dataset
 
     # balanced = '_balanced' if balance else ''
 
-    train_data_file = '{}_{}{}.h5'.format(dataset, 'train', fold)
-    valid_data_file = '{}_{}{}.h5'.format(dataset, 'valid', fold)
-    test_data_file = '{}_{}{}.h5'.format(dataset, 'test', fold)
+    train_data_file = '{}_{}{}.h5'.format(filename, 'train', fold)
+    valid_data_file = '{}_{}{}.h5'.format(filename, 'valid', fold)
+    test_data_file = '{}_{}{}.h5'.format(filename, 'test', fold)
 
     d = tb.open_file(source_path + train_data_file)
     d_valid = tb.open_file(source_path + valid_data_file)
@@ -173,7 +187,7 @@ def load_matrices(**kwargs):
     if balance:
         X, y = balance_set(X, y)
         X_v, y_v = balance_set(X_v, y_v)
-        X_t, y_t = balance_set(X_t, y_t, sample=False) # Deterministic balanced split for testing/comparisons?
+        X_t, y_t = balance_set(X_t, y_t, sample=False)  # Deterministic balanced split for testing/comparisons?
 
     if normalize_data:
         X = normalize(X)

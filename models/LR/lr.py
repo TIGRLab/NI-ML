@@ -2,13 +2,13 @@ from sklearn import linear_model, decomposition
 import sys
 import logging
 from sklearn.pipeline import Pipeline
-
 root = '/projects/francisco/repositories/NI-ML/'
 sys.path.insert(0, root)
 
 # Load repo-specific imports:
 from adni_utils.experiment import experiment
 from adni_utils.dataset_constants import *
+from adni_utils.evaluate_model import evaluate
 
 
 def pca_lr(params, n_classes):
@@ -24,15 +24,15 @@ def pca_lr(params, n_classes):
     return pca_lr_classifier, 'PCA Logistic Regression'
 
 
-def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
+def main(job_id, params):
     """
     Main hook for Spearmint.
     :param job_id:
     :param params:
     :return:
     """
-    score = experiment(params=params, classifier_fn=pca_lr, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=False)
+    score = experiment(params=params, classifier_fn=pca_lr, n=default_n_trials, test=False, **dataset_args[default_dataset])
+
     return score
 
 
@@ -44,10 +44,5 @@ if __name__ == "__main__":
         'n_components': 16,
         'C': 0.5,
     }
-    if held_out_test:
-        experiment(params=params, classifier_fn=pca_lr, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
-                    folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials, test=True)
-    else:
-        for side in sides:
-            for dataset in adni_datasets:
-                main(job_id, params, side, dataset)
+    evaluate(params=params, classifier_fn=pca_lr, n=default_n_trials, test=False, model_metrics=None, **dataset_args[default_dataset])
+

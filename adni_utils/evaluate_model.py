@@ -1,6 +1,9 @@
+import os
+import datetime
 import numpy as np
 import sklearn
 from matplotlib import pyplot as plt
+from adni_utils.data import load_matrices
 from adni_utils.experiment import unpack_experimental_params, metrics
 from adni_utils.dataset_constants import class_name_map
 
@@ -40,36 +43,39 @@ def evaluate(**kwargs):
     :param balance:
     :return:
     """
-    source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test = unpack_experimental_params(
-        **kwargs)
+
+    dataset = kwargs.get('dataset')
+    folds = kwargs.get('folds', [''])
+    n = kwargs.get('n')
+    load_fn = kwargs.get('load_fn', load_matrices)
+    classifier_fn = kwargs.get('classifier_fn')
+    params = kwargs.get('params')
+    class_names = kwargs.get('class_names')
+    model_metrics_fn = kwargs.get('model_metrics')
+
+    if class_names == None:
+        class_names = class_name_map[dataset]
 
     print 'Running model on {} data test set for {} trials'.format(dataset, n)
 
-
-    class_names = kwargs.get('class_names')
-    if not class_names:
-        class_names = class_name_map[dataset]
     omit_class = kwargs.get('omit_class')
-    if not omit_class == None: # I know: awkward.
+
+    if omit_class != None: # I know: awkward.
         print 'Omitting class {} ({})'.format(omit_class, class_names[omit_class])
         del class_names[omit_class]
-    model_metrics_fn = kwargs.get('model_metrics')
+        print 'Classifying between {}'.format(class_names)
+
+
     train = []
     preds = []
     labels = []
     classifiers = []
-
+    scores = []
     accs = []
+    print 'TraAcc ValAcc ValPrec ValRec Valf1'
     for j, fold in enumerate(folds):
         for i in range(n):
-            X, X_v, X_t, y, y_v, y_t, var_names = load_fn(source_path=source_path,
-                                               fold=fold,
-                                               side=side,
-                                               dataset=dataset,
-                                               structure=structure,
-                                               use_fused=use_fused,
-                                               normalize_data=True,
-                                               balance=balance)
+            X, X_v, X_t, y, y_v, y_t, var_names = load_fn(fold=fold, **kwargs)
 
             n_classes = np.unique(y).shape[0]
             classifier, model = classifier_fn(params, n_classes)
@@ -77,21 +83,25 @@ def evaluate(**kwargs):
             classifier.fit(X, y)
             training_accuracy = classifier.score(X, y)
             y_hat = classifier.predict(X_t)
+            y_score = classifier.predict_proba(X_t)
             acc, prec, rec, f1 = metrics(classifier, X_t, y_t)
-            print '{} {} {} {}'.format(acc, prec, rec, f1)
+            print '{} {} {} {} {}'.format(training_accuracy, acc, prec, rec, f1)
             accs.append(acc)
             preds.append(y_hat)
             labels.append(y_t)
+            scores.append(y_score)
             train.append(training_accuracy)
             classifiers.append(classifier)
 
-
     preds = np.concatenate(preds)
     labels = np.concatenate(labels)
+    scores = np.concatenate(scores)
 
     print
-    print 'Mean Acc: {}'.format(np.mean(accs))
-    print 'Std Acc: {}'.format(np.std(accs))
+    print 'Mean Training Acc: {}'.format(np.mean(train))
+    print 'Std Training Acc: {}'.format(np.std(train))
+    print 'Mean Test Acc: {}'.format(np.mean(accs))
+    print 'Std Test Acc: {}'.format(np.std(accs))
     print sklearn.metrics.classification_report(labels, preds,
                                         target_names=class_names)
 
@@ -101,12 +111,36 @@ def evaluate(**kwargs):
     print 'Params:'
     print params
 
+    print 'Number of independent vars: {}'.format(len(var_names))
+
+    plot_path = os.getcwd() + '/plots/'
+    if not os.path.isdir(plot_path):
+        os.mkdir(plot_path)
+
     if model_metrics_fn:
         model_metrics_fn(classifiers, var_names)
 
     print 'CM:'
     print cm_normalized
     plot_confusion_matrix(cm_normalized, target_names=class_names)
+    stamp = datetime.datetime.now().strftime("%Y-%M-%d")
+    #plt.savefig(plot_path + '{}_{}_{}'.format(model, dataset, stamp))
+    plt.show()
+    plt.close('all')
+
+    # ROC
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels, scores[:,1], pos_label=1)
+    auc = sklearn.metrics.auc(fpr, tpr)
+
+    plt.figure()
+    plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % auc)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC')
+    plt.legend(loc="lower right")
     plt.show()
 
     return

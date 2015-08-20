@@ -4,6 +4,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
 from tabulate import tabulate
+from matplotlib import pyplot as plt
 
 root = '/projects/francisco/repositories/NI-ML/'
 sys.path.insert(0, root)
@@ -36,12 +37,14 @@ def model_metrics(classifiers, var_names):
     print 'Gini Importances:'
 
     importances = np.zeros(shape=(len(classifiers), len(var_names)))
+    importances_std = np.zeros(shape=(len(classifiers), len(var_names)))
     for i, classifier in enumerate(classifiers):
-        importances[i,:] = classifier.feature_importances_
+        importances[i, :] = classifier.feature_importances_
+        importances_std[i, :] = np.std([tree.feature_importances_ for tree in classifier.estimators_],
+             axis=0)
 
-
-    mean_importances = np.mean(importances,axis=0)
-    std_importances = np.std(importances, axis=0)
+    mean_importances = np.mean(importances, axis=0)
+    std_importances = np.mean(importances_std, axis=0)
     feats = zip(var_names, mean_importances, std_importances)
 
     # Remove non-important feats:
@@ -49,18 +52,25 @@ def model_metrics(classifiers, var_names):
 
     feats.sort(reverse=True, key=lambda x: x[1])
     print tabulate(feats, headers=['Variable', 'Mean', 'Std'])
+    feats.sort(reverse=False, key=lambda x: x[1])
+
+    # Plot the feature importances of the classifier
+    plt.figure()
+    plt.title("Gini Importance")
+    y_pos = np.arange(len(feats))
+    plt.barh(y_pos, width=zip(*feats)[1], height=0.5, color='r', xerr=zip(*feats)[2], align="center")
+    plt.yticks(y_pos, zip(*feats)[0])
+    plt.show()
 
 
-def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
+def main(job_id, params):
     """
     Main hook for Spearmint.
     :param job_id:
     :param params:
     :return:
     """
-    score = experiment(params=params, classifier_fn=adaboost, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
-                       test=False, omit_class=omit_class)
+    score = experiment(params=params, classifier_fn=adaboost, n=default_n_trials, test=False, **dataset_args[default_dataset])
     return score
 
 
@@ -68,10 +78,9 @@ if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
     job_id = 0
     params = {
-        'n_estimators': 6,
-        'log_learning_rate': 0.0,
+        'n_estimators': 4,
+        'log_learning_rate': -2.0,
         'max_depth': 1
     }
-    evaluate(params=params, classifier_fn=adaboost, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
-                       test=False, omit_class=omit_class, model_metrics=model_metrics)
+    evaluate(params=params, classifier_fn=adaboost, n=default_n_trials, test=False, model_metrics=model_metrics, **dataset_args[default_dataset])
+

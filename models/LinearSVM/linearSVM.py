@@ -28,16 +28,14 @@ def linearSVM(params, n_classes):
     return classifier, 'Linear SVM'
 
 
-def main(job_id, params, side=evaluation_side, dataset=evaluation_dataset):
+def main(job_id, params):
     """
     Main hook for Spearmint.
     :param job_id:
     :param params:
     :return:
     """
-    score = experiment(params=params, classifier_fn=linearSVM, structure=structure, side=side, dataset=dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
-                       omit_class=omit_class)
+    score = experiment(params=params, classifier_fn=linearSVM, n=default_n_trials, test=False, **dataset_args[default_dataset])
     return score
 
 
@@ -47,9 +45,8 @@ if __name__ == "__main__":
         'log_learning_rate': -0.80841064,
         'log_alpha_decay': -13.08461304,
     }
-    evaluate(params=params, classifier_fn=linearSVM, structure=structure, side=evaluation_side, dataset=evaluation_dataset,
-                       folds=folds, source_path=source_path, use_fused=use_fused, balance=balance, n=n_trials,
-                       omit_class=omit_class)
+    evaluate(params=params, classifier_fn=linearSVM, n=default_n_trials, test=False, model_metrics=None, **dataset_args[default_dataset])
+
 
 
 
