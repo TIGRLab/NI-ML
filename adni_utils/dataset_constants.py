@@ -13,7 +13,8 @@ balance = True
 default_folds = [''] # No folds.
 
 # Change these when running Spearmint experiments which use only the main and don't iterate over datasets or sides:
-default_dataset = 'ADNI_Cortical_Features' # Valid values: mci_cn, ad_cn
+#default_dataset = 'ADNI_Cortical_Features' # Valid values: mci_cn, ad_cn
+default_dataset = 'HC'
 
 # How many trials to run per fold (useful in the case of randomly sampled subsets of data, or randomized algos):
 default_n_trials = 10
@@ -32,7 +33,8 @@ dataset_args = {
         'load_fn': load_matrices,
         'dataset': 'ADNI_Cortical_Features',
         'omit_class': 2, # ie: Omit ad, classifies between cn and mci
-        'use_fused': False
+        'use_fused': False,
+        'variables': 'top'
     },
     'HC': {
         'source_path': source_path,
@@ -41,7 +43,7 @@ dataset_args = {
         'dataset': 'hc',
         'omit_class': None,
         'structure': 'hc',
-        'sides': ['b'],
+        'side': 'b',
         'use_fused': True,
     },
 }

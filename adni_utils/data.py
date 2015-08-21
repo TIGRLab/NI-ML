@@ -50,14 +50,14 @@ def load_segmentations(**kwargs):
     :param use_fused:
     :return:
     """
-    train_data = kwargs['train_data']
-    test_data = kwargs['test_data']
-    valid_data = kwargs['valid_data']
-    dataset = kwargs['dataset']
-    omit_class = kwargs['omit_class']
-    side = kwargs['side']
-    structure = kwargs['structure']
-    use_fused = kwargs['use_fused']
+    train_data = kwargs.get('train_data')
+    test_data = kwargs.get('test_data')
+    valid_data = kwargs.get('valid_data')
+    dataset = kwargs.get('dataset')
+    omit_class = kwargs.get('omit_class')
+    side = kwargs.get('side')
+    structure = kwargs.get('structure')
+    use_fused = kwargs.get('use_fused', False)
 
     fused = '_fused' if use_fused else ''
 
@@ -94,18 +94,26 @@ def load_cortical(**kwargs):
     :param kwargs:
     :return:
     """
+    var_mapping_regex = {
+        'all': '^.*$',
+        'top': '^TPOsup.*|MTG.*|PCG.*|PoCG.*$'
+    }
+
     train_data = kwargs['train_data']
     test_data = kwargs['test_data']
     valid_data = kwargs['valid_data']
     omit_class = kwargs.get('omit_class')
+    variables = kwargs.get('variables', 'all')
 
     ct_data = pd.read_csv('/projects/nikhil/ADNI_prediction/input_datasets/CT/scans_AAL.csv')
-    cortical_variables = list(ct_data.columns[1:])
 
 
-    X = train_data.get_node('/features')[:]
-    X_v = valid_data.get_node('/features')[:]
-    X_t = test_data.get_node('/features')[:]
+    vinds = [ct_data.iloc[:,1:].columns.get_loc(var) for var in ct_data.iloc[:,1:].filter(regex=var_mapping_regex[variables])]
+    cortical_variables = list(ct_data.iloc[:,1:][np.array(vinds)])
+
+    X = train_data.get_node('/features')[:, vinds]
+    X_v = valid_data.get_node('/features')[:, vinds]
+    X_t = test_data.get_node('/features')[:, vinds]
     y = train_data.get_node('/labels')[:]
     y_v = valid_data.get_node('/labels')[:]
     y_t = test_data.get_node('/labels')[:]
@@ -180,7 +188,7 @@ def load_matrices(**kwargs):
     d_valid = tb.open_file(source_path + valid_data_file)
     d_test = tb.open_file(source_path + test_data_file)
 
-    matrix_fn = data_fns[dataset]
+    matrix_fn = data_fns[filename]
 
     X, X_v, X_t, y, y_v, y_t, var_names = matrix_fn(train_data=d, test_data=d_test, valid_data=d_valid, **kwargs)
 

@@ -78,8 +78,8 @@ if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
     job_id = 0
     params = {
-        'n_estimators': 4,
-        'log_learning_rate': -2.0,
+        'n_estimators': 6,
+        'log_learning_rate': -0.1,
         'max_depth': 1
     }
     evaluate(params=params, classifier_fn=adaboost, n=default_n_trials, test=False, model_metrics=model_metrics, **dataset_args[default_dataset])
