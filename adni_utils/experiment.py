@@ -25,6 +25,7 @@ def metrics(classifier, X, y):
     return acc, prec, rec, f1
 
 
+
 def spearmint_score_fn(classifier, train_acc, val_acc, n_classes):
     """
     Loss function used for Spearmint optimization.
@@ -116,6 +117,28 @@ def unpack_experimental_params(**kwargs):
     return source_path, params, classifier_fn, dataset, load_fn, structure, side, folds, use_fused, balance, normalize_data, n, test
 
 
+def n_trials_fn(X, X2, X3, y, y2, y3, n, test=False):
+    X_train = X
+    X_holdout = X3 if test else X2
+    y_train = y
+    y_holdout = y3 if test else y2
+    return [(X_train, X_holdout, y_train, y_holdout) for i in range(n)]
+
+
+def leave_one_out_fn(X, X2, X3, y, y2, y3, n, test=False):
+    X = np.concatenate([X, X2],axis=0)
+    y = np.concatenate([y, y2],axis=0)
+    N = X.shape[0]
+    splits = sklearn.cross_validation.KFold(N, n_folds=N, random_state=0)
+    return [(X[tinds], X[vinds], y[tinds], y[vinds]) for tinds, vinds in splits]
+
+
+cross_val_fn_map = {
+    'n_trials': n_trials_fn,
+    'leave_one_out': leave_one_out_fn,
+}
+
+
 def experiment(**kwargs):
     """
     Train and test the classifier's predictive ability on the held-out validation data set by averaging results from n trials.
@@ -137,6 +160,9 @@ def experiment(**kwargs):
     folds = kwargs.get('folds', [''])
     params = kwargs.get('params')
     n = kwargs.get('n', 1)
+    job_id = kwargs.get('job_id',0)
+    cross_val = kwargs.get('cross_val_fn', 'n_trials')
+    cross_val_fn = cross_val_fn_map[cross_val]
 
     score = []
     train = []
@@ -145,9 +171,8 @@ def experiment(**kwargs):
     labels = []
 
     for j, fold in enumerate(folds):
-        for i in range(n):
-            X, X_held_out, _, y, y_held_out, _, var_names = load_fn(fold=fold, **kwargs)
-
+        X, X2, X3, y, y2, y3, var_names = load_fn(fold=fold, **kwargs)
+        for X, X_held_out, y, y_held_out in cross_val_fn(X, X2, X3, y, y2, y3, n):
             held_out_spearmint_score, held_out_accuracy, held_out_predictions, training_accuracy = experiment_on_fold(
                 X=X,
                 X_held_out=X_held_out,
@@ -167,14 +192,15 @@ def experiment(**kwargs):
     std_val = np.std(acc)
     mean_train = np.mean(training_accuracy)
     std_train = np.std(training_accuracy)
+    mean_spearmint_score += std_val
 
     # alphabetize params:
     alpha_params = params.items()
     alpha_params.sort()
 
     param_log = map(lambda x: x[0] if isinstance(x, np.ndarray) else x, zip(*alpha_params)[1])
-    logging.info('{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t'.format(mean_spearmint_score, std_score, mean_val, std_val, mean_train,
+    logging.info('{:08d}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t{:.8f}\t'.format(job_id, mean_spearmint_score, std_score, mean_val, std_val, mean_train,
                                              std_train) + ''.join('{:.8f}\t'.format(p) for p in param_log))
 
     # Final spearmint score has std term: more stable algos are better
-    return mean_spearmint_score + std_val
+    return mean_spearmint_score

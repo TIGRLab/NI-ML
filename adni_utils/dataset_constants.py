@@ -32,9 +32,10 @@ dataset_args = {
         'class_names': ['ad', 'cn', 'mci'],
         'load_fn': load_matrices,
         'dataset': 'ADNI_Cortical_Features',
-        'omit_class': 2, # ie: Omit ad, classifies between cn and mci
+        'omit_class': None, # ie: Omit ad, classifies between cn and mci
         'use_fused': False,
-        'variables': 'top'
+        'variables': 'all',
+        'balance': False,
     },
     'HC': {
         'source_path': source_path,
@@ -43,7 +44,7 @@ dataset_args = {
         'dataset': 'hc',
         'omit_class': None,
         'structure': 'hc',
-        'side': 'b',
+        'side': 'l',
         'use_fused': True,
     },
 }

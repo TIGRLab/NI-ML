@@ -4,7 +4,7 @@ import numpy as np
 import sklearn
 from matplotlib import pyplot as plt
 from adni_utils.data import load_matrices
-from adni_utils.experiment import unpack_experimental_params, metrics
+from adni_utils.experiment import unpack_experimental_params, metrics, cross_val_fn_map
 from adni_utils.dataset_constants import class_name_map
 
 
@@ -66,6 +66,10 @@ def evaluate(**kwargs):
         print 'Classifying between {}'.format(class_names)
 
 
+    cross_val = kwargs.get('cross_val_fn', 'n_trials')
+    cross_val_fn = cross_val_fn_map[cross_val]
+    print 'using {} cross validation function'.format(cross_val)
+
     train = []
     preds = []
     labels = []
@@ -74,24 +78,23 @@ def evaluate(**kwargs):
     accs = []
     print 'TraAcc ValAcc ValPrec ValRec Valf1'
     for j, fold in enumerate(folds):
-        for i in range(n):
-            X, X_v, X_t, y, y_v, y_t, var_names = load_fn(fold=fold, **kwargs)
+        X, X2, X3, y, y2, y3, var_names = load_fn(fold=fold, **kwargs)
+        for X, X_held_out, y, y_held_out in cross_val_fn(X, X2, X3, y, y2, y3, n):
+                n_classes = np.unique(y).shape[0]
+                classifier, model = classifier_fn(params, n_classes)
 
-            n_classes = np.unique(y).shape[0]
-            classifier, model = classifier_fn(params, n_classes)
-
-            classifier.fit(X, y)
-            training_accuracy = classifier.score(X, y)
-            y_hat = classifier.predict(X_t)
-            y_score = classifier.predict_proba(X_t)
-            acc, prec, rec, f1 = metrics(classifier, X_t, y_t)
-            print '{} {} {} {} {}'.format(training_accuracy, acc, prec, rec, f1)
-            accs.append(acc)
-            preds.append(y_hat)
-            labels.append(y_t)
-            scores.append(y_score)
-            train.append(training_accuracy)
-            classifiers.append(classifier)
+                classifier.fit(X, y)
+                training_accuracy = classifier.score(X, y)
+                y_hat = classifier.predict(X_held_out)
+                y_score = classifier.predict_proba(X_held_out)
+                acc, prec, rec, f1 = metrics(classifier, X_held_out, y_held_out)
+                print '{} {} {} {} {}'.format(training_accuracy, acc, prec, rec, f1)
+                accs.append(acc)
+                preds.append(y_hat)
+                labels.append(y_held_out)
+                scores.append(y_score)
+                train.append(training_accuracy)
+                classifiers.append(classifier)
 
     preds = np.concatenate(preds)
     labels = np.concatenate(labels)
@@ -130,6 +133,9 @@ def evaluate(**kwargs):
 
     # ROC
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels, scores[:,1], pos_label=1)
+    # Save fpr tpr
+    #np.savetxt("fpr.csv", fpr, delimiter=",")
+    #np.savetxt("tpr.csv", tpr, delimiter=",")
     auc = sklearn.metrics.auc(fpr, tpr)
 
     plt.figure()

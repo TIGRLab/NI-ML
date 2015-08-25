@@ -19,10 +19,13 @@ def balanced_indices(y, sample=True):
         inds.append(ind)
         lengths.append(len(ind))
     min_class_size = np.min(lengths)
+
     if sample:
         balanced_inds = np.concatenate([np.random.choice(ind, replace=False, size=min_class_size) for ind in inds])
     else:
         balanced_inds = np.concatenate([ind[0:min_class_size] for ind in inds])
+
+    np.random.seed(0)
     np.random.shuffle(balanced_inds)  # in-place shuffle
     return balanced_inds
 
@@ -164,6 +167,7 @@ def load_matrices(**kwargs):
         'ad_cn': load_segmentations,
         'ad_mci_cn': load_segmentations,
         'ADNI_Cortical_Features': load_cortical,
+        'balanced_ADNI_Cortical_Features': load_cortical,
     }
 
     dataset = kwargs.get('dataset')
@@ -175,10 +179,8 @@ def load_matrices(**kwargs):
 
     if 'hc' in dataset:
         filename = map_hc_class_to_file(omit_class)
-    else:
-        filename = dataset
-
-    # balanced = '_balanced' if balance else ''
+    elif 'Cortical' in dataset:
+        filename = 'balanced_ADNI_Cortical_Features'
 
     train_data_file = '{}_{}{}.h5'.format(filename, 'train', fold)
     valid_data_file = '{}_{}{}.h5'.format(filename, 'valid', fold)
@@ -195,7 +197,7 @@ def load_matrices(**kwargs):
     if balance:
         X, y = balance_set(X, y)
         X_v, y_v = balance_set(X_v, y_v)
-        X_t, y_t = balance_set(X_t, y_t, sample=False)  # Deterministic balanced split for testing/comparisons?
+        X_t, y_t = balance_set(X_t, y_t, sample=False)
 
     if normalize_data:
         X = normalize(X)

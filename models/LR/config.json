@@ -7,14 +7,14 @@
     "n_components": {
       "type" : "int",
       "size" : 1,
-      "min"  : 5,
-      "max"  : 1000
+      "min"  : 2,
+      "max"  : 64
     },
-    "C": {
+    "log_C": {
       "type": "FLOAT",
       "size": 1,
-      "min": 1.0,
-      "max": 10.0
+      "min": -12.0,
+      "max": 2.0
     }
   }
 }

@@ -1,6 +1,7 @@
 from sklearn import linear_model, decomposition
 import sys
 import logging
+import numpy as np
 from sklearn.pipeline import Pipeline
 root = '/projects/francisco/repositories/NI-ML/'
 sys.path.insert(0, root)
@@ -12,12 +13,12 @@ from adni_utils.evaluate_model import evaluate
 
 
 def pca_lr(params, n_classes):
-    C = params['C']
+    C = np.exp(params['log_C'])
     n_components = params['n_components']
     mclass = 'multinomial' if n_classes > 2 else 'ovr'
     solver = 'lbfgs' if n_classes > 2 else 'liblinear'
 
-    logistic = linear_model.LogisticRegression(C=C, verbose=1, multi_class=mclass, solver=solver)
+    logistic = linear_model.LogisticRegression(C=C, multi_class=mclass, solver=solver, penalty='l2')
 
     pca = decomposition.RandomizedPCA(n_components=n_components)
     pca_lr_classifier = Pipeline(steps=[('pca', pca), ('logistic', logistic)])
@@ -31,7 +32,7 @@ def main(job_id, params):
     :param params:
     :return:
     """
-    score = experiment(params=params, classifier_fn=pca_lr, n=default_n_trials, test=False, **dataset_args[default_dataset])
+    score = experiment(job_id=job_id, params=params, classifier_fn=pca_lr, n=default_n_trials, test=False, **dataset_args[default_dataset])
 
     return score
 
@@ -41,8 +42,8 @@ if __name__ == "__main__":
     held_out_test = True
     job_id = 0
     params = {
-        'n_components': 16,
-        'C': 0.5,
+        'n_components': 64,
+        'log_C': 0.5,
     }
     evaluate(params=params, classifier_fn=pca_lr, n=default_n_trials, test=False, model_metrics=None, **dataset_args[default_dataset])
 
