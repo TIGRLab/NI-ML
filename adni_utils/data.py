@@ -209,3 +209,27 @@ def load_matrices(**kwargs):
     d_test.close()
 
     return X, X_v, X_t, y, y_v, y_t, var_names
+
+
+def load_multiple_modalities(**kwargs):
+    target = kwargs.get('target', 'ADAS11_bl')
+    modalities = kwargs.get('modalities', ['CT', 'L_HC', 'R_HC'])
+    modalities_regex = '|'.join(['^{}_'.format(m) for m in modalities])
+
+    matrices = []
+    for split in ['train', 'valid', 'test']:
+        frame = pd.read_pickle('/projects/francisco/data/ADNI/cli_ct_seg_fused_{}.pkl'.format(split))
+        X_cur = frame.filter(regex=modalities_regex).as_matrix()
+        y_cur = frame[target].as_matrix()
+        matrices.append((X_cur,y_cur))
+
+    var_names = list(frame.filter(regex=modalities_regex).columns)
+    X, y = matrices[0][0], matrices[0][1]
+    X_v, y_v = matrices[1][0], matrices[1][1]
+    X_t, y_t = matrices[2][0], matrices[2][1]
+    return X, X_v, X_t, y, y_v, y_t, var_names
+
+
+
+
+

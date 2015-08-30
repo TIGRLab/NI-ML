@@ -1,5 +1,5 @@
 import pandas as pd
-from data import load_matrices
+from data import load_matrices, load_multiple_modalities
 
 # Data Vars:
 source_path = '/projects/francisco/data/caffe/standardized/combined/'
@@ -13,8 +13,8 @@ balance = True
 default_folds = [''] # No folds.
 
 # Change these when running Spearmint experiments which use only the main and don't iterate over datasets or sides:
-#default_dataset = 'ADNI_Cortical_Features' # Valid values: mci_cn, ad_cn
-default_dataset = 'HC'
+default_dataset = 'multiple' # Valid values: mci_cn, ad_cn
+#default_dataset = 'HC'
 
 # How many trials to run per fold (useful in the case of randomly sampled subsets of data, or randomized algos):
 default_n_trials = 10
@@ -23,7 +23,8 @@ class_name_map = {
     'ad_mci_cn': ['ad', 'cn', 'mci'],
     'ad_cn': ['ad', 'cn'],
     'mci_cn': ['cn', 'mci'],
-    'ADNI_Cortical_Features': ['ad', 'cn', 'mci']
+    'ADNI_Cortical_Features': ['ad', 'cn', 'mci'],
+    'multiple': ['ad', 'cn', 'mci'],
 }
 
 dataset_args = {
@@ -44,7 +45,12 @@ dataset_args = {
         'dataset': 'hc',
         'omit_class': None,
         'structure': 'hc',
-        'side': 'l',
+        'side': 'b',
         'use_fused': True,
     },
+    'multiple': {
+        'dataset': 'multiple',
+        'target': 'ADAS13',
+        'load_fn': load_multiple_modalities,
+    }
 }

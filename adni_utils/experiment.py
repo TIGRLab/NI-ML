@@ -122,7 +122,7 @@ def n_trials_fn(X, X2, X3, y, y2, y3, n, test=False):
     X_holdout = X3 if test else X2
     y_train = y
     y_holdout = y3 if test else y2
-    return [(X_train, X_holdout, y_train, y_holdout) for i in range(n)]
+    return [(X_train, X_holdout, X3, y_train, y_holdout, y3) for i in range(n)]
 
 
 def leave_one_out_fn(X, X2, X3, y, y2, y3, n, test=False):
@@ -130,8 +130,21 @@ def leave_one_out_fn(X, X2, X3, y, y2, y3, n, test=False):
     y = np.concatenate([y, y2],axis=0)
     N = X.shape[0]
     splits = sklearn.cross_validation.KFold(N, n_folds=N, random_state=0)
-    return [(X[tinds], X[vinds], y[tinds], y[vinds]) for tinds, vinds in splits]
+    return [(X[tinds], X[vinds], X3, y[tinds], y[vinds], y3) for tinds, vinds in splits]
 
+
+def double_cross_validation(X, X2, X3, y, y2, y3, n, test=False):
+    X = np.concatenate([X, X2, X3],axis=0)
+    y = np.concatenate([y, y2, y3],axis=0)
+    N = X.shape[0]
+    outer_splits = sklearn.cross_validation.KFold(N, n_folds=10, random_state=0)
+    double_splits = []
+    for calibration, test in outer_splits:
+        N_inner = len(calibration)
+        for train, valid in sklearn.cross_validation.KFold(N_inner, n_folds=10, random_state=0):
+            double_splits.append((X[calibration,:][train], X[calibration,:][valid], X[test,:],
+                                 y[calibration,:][train], y[calibration,:][valid], y[test,:]))
+    return double_splits
 
 cross_val_fn_map = {
     'n_trials': n_trials_fn,
@@ -172,7 +185,7 @@ def experiment(**kwargs):
 
     for j, fold in enumerate(folds):
         X, X2, X3, y, y2, y3, var_names = load_fn(fold=fold, **kwargs)
-        for X, X_held_out, y, y_held_out in cross_val_fn(X, X2, X3, y, y2, y3, n):
+        for X, X_held_out, _, y, y_held_out, _ in cross_val_fn(X, X2, X3, y, y2, y3, n):
             held_out_spearmint_score, held_out_accuracy, held_out_predictions, training_accuracy = experiment_on_fold(
                 X=X,
                 X_held_out=X_held_out,

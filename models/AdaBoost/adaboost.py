@@ -70,7 +70,7 @@ def main(job_id, params):
     :param params:
     :return:
     """
-    score = experiment(params=params, classifier_fn=adaboost, n=default_n_trials, test=False, **dataset_args[default_dataset])
+    score = experiment(job_id=job_id, params=params, classifier_fn=adaboost, n=default_n_trials, **dataset_args[default_dataset])
     return score
 
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     # Entry point when running the script manually. Not run by Spearmint.
     job_id = 0
     params = {
-        'n_estimators': 262,
+        'n_estimators': 6,
         'log_learning_rate': -5.0,
         'max_depth': 1
     }

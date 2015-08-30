@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from adni_utils.data import load_matrices
 from adni_utils.experiment import unpack_experimental_params, metrics, cross_val_fn_map
 from adni_utils.dataset_constants import class_name_map
+from tabulate import tabulate
 
 
 def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, target_names=['ad', 'cn', 'mci']):
@@ -16,6 +17,8 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, targe
     :param cmap:
     :return:
     """
+    print 'CM:'
+    print cm
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
@@ -52,6 +55,7 @@ def evaluate(**kwargs):
     params = kwargs.get('params')
     class_names = kwargs.get('class_names')
     model_metrics_fn = kwargs.get('model_metrics')
+    positive_class = kwargs.get('positive_class', 1)
 
     if class_names == None:
         class_names = class_name_map[dataset]
@@ -76,30 +80,39 @@ def evaluate(**kwargs):
     classifiers = []
     scores = []
     accs = []
-    print 'TraAcc ValAcc ValPrec ValRec Valf1'
+    metrics_table = []
+
     for j, fold in enumerate(folds):
         X, X2, X3, y, y2, y3, var_names = load_fn(fold=fold, **kwargs)
-        for X, X_held_out, y, y_held_out in cross_val_fn(X, X2, X3, y, y2, y3, n):
+        for X, X_v, X_held_out, y, y_v, y_held_out in cross_val_fn(X, X2, X3, y, y2, y3, n, test=True):
                 n_classes = np.unique(y).shape[0]
                 classifier, model = classifier_fn(params, n_classes)
-
                 classifier.fit(X, y)
                 training_accuracy = classifier.score(X, y)
                 y_hat = classifier.predict(X_held_out)
-                y_score = classifier.predict_proba(X_held_out)
+
+                try:
+                    y_score = classifier.predict_proba(X_held_out)
+                    scores.append(y_score)
+                except AttributeError:
+                    print 'Warning: Classifier cannot provide probabilities'
+
+
                 acc, prec, rec, f1 = metrics(classifier, X_held_out, y_held_out)
-                print '{} {} {} {} {}'.format(training_accuracy, acc, prec, rec, f1)
+                metrics_table.append([acc, prec, rec, f1])
                 accs.append(acc)
                 preds.append(y_hat)
                 labels.append(y_held_out)
-                scores.append(y_score)
                 train.append(training_accuracy)
                 classifiers.append(classifier)
 
     preds = np.concatenate(preds)
     labels = np.concatenate(labels)
-    scores = np.concatenate(scores)
+    if scores != []:
+        scores = np.concatenate(scores)
 
+
+    print tabulate(metrics_table, headers=['TraAcc', 'ValAcc', 'ValPrec', 'ValRec', 'Valf1'])
     print
     print 'Mean Training Acc: {}'.format(np.mean(train))
     print 'Std Training Acc: {}'.format(np.std(train))
@@ -123,16 +136,21 @@ def evaluate(**kwargs):
     if model_metrics_fn:
         model_metrics_fn(classifiers, var_names)
 
-    print 'CM:'
-    print cm_normalized
     plot_confusion_matrix(cm_normalized, target_names=class_names)
+
+    if scores != []:
+        plot_roc(labels, scores, positive_class)
+
     stamp = datetime.datetime.now().strftime("%Y-%M-%d")
     #plt.savefig(plot_path + '{}_{}_{}'.format(model, dataset, stamp))
     plt.show()
     plt.close('all')
+    return
 
+
+def plot_roc(labels, prob_scores, pos_class):
     # ROC
-    fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels, scores[:,1], pos_label=1)
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels, prob_scores[:,1], pos_label=pos_class)
     # Save fpr tpr
     #np.savetxt("fpr.csv", fpr, delimiter=",")
     #np.savetxt("tpr.csv", tpr, delimiter=",")
@@ -148,5 +166,3 @@ def evaluate(**kwargs):
     plt.title('ROC')
     plt.legend(loc="lower right")
     plt.show()
-
-    return
