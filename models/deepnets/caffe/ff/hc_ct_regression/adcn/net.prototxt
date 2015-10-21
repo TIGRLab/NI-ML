@@ -6,7 +6,7 @@ name: "HC_l_net"
 
 # Training Data
 layer {
-  name: "lr_hc_ct_features"
+  name: "Outer_Fold_1_train_Inner_Fold_1_X"
   type: "HDF5Data"
   top: "Outer_Fold_1_train_Inner_Fold_1_X"
   top: "Outer_Fold_1_train_Inner_Fold_1_y"
@@ -22,7 +22,7 @@ layer {
 
 # Test Data
 layer {
-  name: "lr_hc_ct_features"
+  name: "Outer_Fold_1_train_Inner_Fold_1_X"
   type: "HDF5Data"
   top: "Outer_Fold_1_train_Inner_Fold_1_X"
   top: "Outer_Fold_1_train_Inner_Fold_1_y"
@@ -32,13 +32,12 @@ layer {
   hdf5_data_param {
     source: "test.txt"
     batch_size: 256
-
     shuffle: true
   }
 }
 
 
-###################################3
+###################################
 # Feed forward layers
 #
 layer {
