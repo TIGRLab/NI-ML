@@ -23,13 +23,14 @@ then
     mkdir $TRAIN;
 fi
 
+# TODO: Add support for specifying GPU and weights independently
 if [ -n "$3" ]
 then
   WEIGHTS=$3
   GPU=$2
-  caffe train --solver=solver.prototxt -log_dir=$LOGS -weights $WEIGHTS -gpu $GPU;
+  caffe train --solver=solver.prototxt -log_dir=$LOGS -weights $WEIGHTS;
 else
-  caffe train --solver=solver.prototxt -log_dir=$LOGS -gpu $GPU;
+  caffe train --solver=solver.prototxt -log_dir=$LOGS;
 fi
 
 cd $WORKING
