@@ -1,1 +1,1 @@
-/projects/francisco/data/caffe/standardized/ad_cn_valid.h5
+/projects/nikhil/ADNI_prediction/input_datasets/HC_CT_inflated_CV_OuterFold_1_valid_InnerFolds.h5

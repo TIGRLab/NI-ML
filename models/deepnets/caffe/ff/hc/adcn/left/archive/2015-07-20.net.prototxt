@@ -16,7 +16,6 @@ layer {
   hdf5_data_param {
     source: "train.txt"
     batch_size: 256
-    shuffle: true
   }
 }
 
@@ -32,7 +31,6 @@ layer {
   hdf5_data_param {
     source: "test.txt"
     batch_size: 256
-    shuffle: true
   }
 }
 

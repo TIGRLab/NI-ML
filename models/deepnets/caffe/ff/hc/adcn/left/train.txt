@@ -1,1 +1,1 @@
-/projects/francisco/data/caffe/standardized/ad_cn_train.h5
+/projects/nikhil/ADNI_prediction/input_datasets/HC_CT_inflated_CV_OuterFold_1_train_InnerFolds.h5

@@ -6,10 +6,10 @@ name: "HC_l_net"
 
 # Training Data
 layer {
-  name: "l_hc_features"
+  name: "lr_hc_ct_features"
   type: "HDF5Data"
-  top: "l_hc_features"
-  top: "label"
+  top: "Outer_Fold_1_train_Inner_Fold_1_X"
+  top: "Outer_Fold_1_train_Inner_Fold_1_y"
   include {
     phase: TRAIN
   }
@@ -22,16 +22,17 @@ layer {
 
 # Test Data
 layer {
-  name: "l_hc_features"
+  name: "lr_hc_ct_features"
   type: "HDF5Data"
-  top: "l_hc_features"
-  top: "label"
+  top: "Outer_Fold_1_train_Inner_Fold_1_X"
+  top: "Outer_Fold_1_train_Inner_Fold_1_y"
   include {
     phase: TEST
   }
   hdf5_data_param {
     source: "test.txt"
     batch_size: 256
+
     shuffle: true
   }
 }
@@ -43,17 +44,17 @@ layer {
 layer {
   name: "ff1"
   type: "InnerProduct"
-  bottom: "l_hc_features"
+  bottom: "Outer_Fold_1_train_Inner_Fold_1_X"
   top: "ff1"
   param {
     lr_mult: 2
     decay_mult: 1
   }
   inner_product_param {
-    num_output: 32
+    num_output: 96
     weight_filler {
       type: "gaussian"
-      std: 0.1
+      std: 0.102
     }
     bias_filler {
       type: "constant"
@@ -89,10 +90,10 @@ layer {
     decay_mult: 1
   }
   inner_product_param {
-    num_output: 32
+    num_output: 96
     weight_filler {
       type: "gaussian"
-      std: 0.1
+      std: 0.102
     }
     bias_filler {
       type: "constant"
@@ -150,19 +151,9 @@ layer {
 
 layer {
   name: "loss"
-  type: "SoftmaxWithLoss"
+  type: "EuclideanLoss"
   bottom: "clas"
-  bottom: "label"
+  bottom: "Outer_Fold_1_train_Inner_Fold_1_y"
   top: "loss"
 }
 
-layer {
-  name: "accuracy"
-  type: "Accuracy"
-  bottom: "clas"
-  bottom: "label"
-  top: "accuracy"
-  include {
-    phase: TEST
-  }
-}
