@@ -8,7 +8,7 @@ fi
 
 WORKING=`pwd`
 MODEL=$1
-GPU=-1
+GPU=all
 LOGS=./logs/
 TRAIN=./train/
 cd $MODEL
@@ -30,7 +30,7 @@ then
   GPU=$2
   caffe train --solver=solver.prototxt -log_dir=$LOGS -weights $WEIGHTS;
 else
-  caffe train --solver=solver.prototxt -log_dir=$LOGS;
+  caffe train --solver=solver.prototxt -log_dir=$LOGS -gpu $GPU;
 fi
 
 cd $WORKING
