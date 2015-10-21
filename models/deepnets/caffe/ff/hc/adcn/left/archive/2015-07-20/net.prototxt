@@ -9,14 +9,13 @@ layer {
   name: "l_hc_features"
   type: "HDF5Data"
   top: "l_hc_features"
-  top: "label"
+  #top: "label"
   include {
     phase: TRAIN
   }
   hdf5_data_param {
     source: "train.txt"
     batch_size: 256
-    shuffle: true
   }
 }
 
@@ -25,14 +24,13 @@ layer {
   name: "l_hc_features"
   type: "HDF5Data"
   top: "l_hc_features"
-  top: "label"
+  #top: "label"
   include {
     phase: TEST
   }
   hdf5_data_param {
     source: "test.txt"
     batch_size: 256
-    shuffle: true
   }
 }
 
@@ -148,21 +146,28 @@ layer {
 # Softmax Classification
 ###################################################
 
-layer {
-  name: "loss"
-  type: "SoftmaxWithLoss"
-  bottom: "clas"
-  bottom: "label"
-  top: "loss"
-}
+#layer {
+#  name: "loss"
+#  type: "SoftmaxWithLoss"
+#  bottom: "clas"
+#  bottom: "label"
+#  top: "loss"
+#}
+
+#layer {
+#  name: "accuracy"
+#  type: "Accuracy"
+#  bottom: "clas"
+#  bottom: "label"
+#  top: "accuracy"
+#  include {
+#    phase: TEST
+#  }
+#}
 
 layer {
-  name: "accuracy"
-  type: "Accuracy"
-  bottom: "clas"
-  bottom: "label"
-  top: "accuracy"
-  include {
-    phase: TEST
-  }
+ name: "prob"
+ type: "Softmax"
+ bottom: "clas"
+ top: "pred"
 }
