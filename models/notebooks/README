@@ -1,0 +1,7 @@
+### Notebook Usage ###
+1. importHCData --> generate dictionary of {subject ID: list[candidate labels]}
+2. importCIVETData --> generate dictionary of {subject ID: dict{roi:list[CT]}} 
+3. inflate_CV_sets-Copy1 --> generate nested folds partitioned based on subject IDs
+4. Regression_KFold_baseline_models_Copy1,2 --> Runs nested CV on baseline models
+5. model_training_visuals --> visulalization of NN training / testing. 
+
