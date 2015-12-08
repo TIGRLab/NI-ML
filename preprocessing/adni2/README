@@ -1,0 +1,80 @@
+Preprocessing the ADNI2 Hippocampal segmentations 
+=================================================
+
+Overview:
+1. Segmentation and registration to a standard space
+2. Import of the labels to hdf5
+3. Removing misregistered labels
+4. Masking labels to reduce dimensionality
+
+
+Hippocampal segmentation and registration to a standard space (01_mb)
+---------------------------------------------------------------------
+Atlas library: 
+- 5 Winterburn atlases
+
+Template library: 
+- ADNI_013_S_5137_MR_MT1__N3m_Br_20130501084308913_S187580_I369614.mnc
+- ADNI_014_S_4328_MR_MT1__GradWarp__N3m_Br_20111121111321090_S128286_I267747.mnc
+- ADNI_018_S_4257_MR_MT1__N3m_Br_20111030174150035_S126108_I263738.mnc
+- ADNI_020_S_5203_MR_MT1__GradWarp__N3m_Br_20130624091203283_S192484_I377764.mnc
+- ADNI_035_S_4783_MR_MT1__GradWarp__N3m_Br_20120706162923103_S156809_I315324.mnc
+- ADNI_072_S_4057_MR_MT1__GradWarp__N3m_Br_20110623111632388_S110940_I241377.mnc
+- ADNI_072_S_4394_MR_MT1__GradWarp__N3m_Br_20120106140516134_S135024_I275763.mnc
+- ADNI_082_S_4090_MR_MT1__GradWarp__N3m_Br_20110623113333326_S112177_I241401.mnc
+- ADNI_130_S_4343_MR_MT1__N3m_Br_20111121112733983_S129057_I267761.mnc
+- ADNI_135_S_4489_MR_MT1__GradWarp__N3m_Br_20120212191136852_S139411_I283942.mnc
+- ADNI_135_S_4722_MR_MT1__GradWarp__N3m_Br_20120521161520372_S150596_I305615.mnc
+- ADNI_136_S_4993_MR_MT1__N3m_Br_20121206104815855_S172271_I349804.mnc
+- ADNI_137_S_4482_MR_MT1__GradWarp__N3m_Br_20120221111311433_S140958_I285903.mnc
+- ADNI_141_S_4232_MR_MT1__GradWarp__N3m_Br_20111008145807246_S123429_I260223.mnc
+- ADNI_141_S_4819_MR_MT1__GradWarp__N3m_Br_20120809144648675_S158300_I322992.mnc
+
+
+MAGeTbrain using a1c18ad modified slightly (see mb.patch) to:
+ - default to using 12 processes, not 8 (for the SCC) 
+ - tar up all candidate labels as well as do majority vote
+ - use voxel_vote.py and not voxel_vote from minc-stuffs
+
+Steps: 
+1. `mb run -q files` to generate template library steps and submit
+2. created `mbvote` textfile by hand to do per-subject voting
+3. ran bin/standardize_labels.sh on candidate and fused labels to move them to standard space: 
+
+    for i in $PWD/output/fusion/majority_vote/*.tar.gz;
+         do name=$(basename $i _labels.mnc_candidates.tar.gz);
+         echo bin/standardize_labels.sh $i $(dirname $i)/${name}_std.tar.gz;
+    done  > stdjobs
+4. Run mb/compress.sh on outputs because mincconvert didn't compress the labels
+   and we wanted them small when doing the import to hdf5
+
+At this point we have each subject's candidate labels split into left/right
+images, linearly registered to a standard space, and packaged up in a tarball.
+We also have a single tarball of fused labels for each subject. 
+
+
+Importing the labels to hdf5 (02_hdf5)
+--------------------------------------
+Run hdf5/hdfify_job.sh to unpack all of the subject labels and load them into
+left/right hdf5 files:
+
+  - hdf5/candidate_left.h5
+  - hdf5/candidate_right.h5
+  - hdf5/fused_left.h5
+  - hdf5/fused_right.h5
+
+
+Removing misregistered labels (03_clean)
+-----------------------------------------
+
+    remove-outliers.py ../hdf5/candidate_left.h5 candidate_left.h5
+
+
+Masking (04_mask)
+-----------------
+
+For compatibility's sake, we borrow the mask from the ADNI1 dataset that was
+created by dropping voxels that weren't different in a certain percentage of
+labels. 
+
+
