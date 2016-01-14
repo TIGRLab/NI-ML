@@ -77,4 +77,15 @@ For compatibility's sake, we borrow the mask from the ADNI1 dataset that was
 created by dropping voxels that weren't different in a certain percentage of
 labels. 
 
+Before running 04_mask/mask.py, be sure to check that it loads the correct
+masks and whatnot from the `like` h5 file. The script needs to read the left or
+right masks depending on the source data you're giving it (sorry, was too lazy
+to make this a command line option). 
 
+    04_mask/mask.py 03_clean/fused_right.h5 /projects/nikhil/ADNI_prediction/adni-autoencoder/combined.h5 04_mask/fused_right.h5 
+    04_mask/mask.py 03_clean/candidate_right.h5 /projects/nikhil/ADNI_prediction/adni-autoencoder/combined.h5 04_mask/candidate_right.h5 
+
+# edit mask.py 
+
+    04_mask/mask.py 03_clean/candidate_left.h5 /projects/nikhil/ADNI_prediction/adni-autoencoder/combined.h5 04_mask/candidate_left.h5 
+    04_mask/mask.py 03_clean/fused_left.h5 /projects/nikhil/ADNI_prediction/adni-autoencoder/combined.h5 04_mask/fused_left.h5 
