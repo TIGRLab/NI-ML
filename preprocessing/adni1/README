@@ -1,0 +1,29 @@
+
+# labels from Julie's Hippocampus folder
+- 02_std/
+  correct_0.3_average_model_labels_whole_v2.mnc
+  correct_0.3_average_model.mnc
+
+# create model left/right
+minclookup -quiet -discrete -lut_string "101 1;" -clobber 02_std/model_labels_res.mnc 02_std/model_labels_res_l.mnc 
+minclookup -quiet -discrete -lut_string "1 1;" -clobber 02_std/model_labels_res.mnc 02_std/model_labels_res_r.mnc 
+
+# register to standard space - 1st iteration
+parallel echo bin/standardize_labels.sh {} 02_std/fused_labels/{/.} ::: 01_mb/fused_labels/*.mnc > stdfused.jobs
+/projects/jp/qbatch/qbatch -b sge -c 1 -j 1 stdfused.jobs -- -l vf=0.5G,mem_free=0.5G,h_vmem=0.5G
+
+# compute kappa with model
+parallel --tag volume_similarity --kappa 02_std/model_labels_res_l.mnc {} ::: 02_std/fused_labels/*_l_std.mnc > fused_left_kappa.csv
+parallel --tag volume_similarity --kappa 02_std/model_labels_res_r.mnc {} ::: 02_std/fused_labels/*_r_std.mnc > fused_right_kappa.csv
+
+# create a left and right averate of subjects, and threshold
+mincaverage -byte 02_std/fused_labels/*l_std.mnc 02_std/average_l_std.mnc 
+mincaverage -byte 02_std/fused_labels/*r_std.mnc 02_std/average_r_std.mnc
+
+minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_l_std.mnc 02_std/average_l_std_0.5.mnc 
+minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_r_std.mnc 02_std/average_r_std_0.5.mnc 
+
+# register to thresholded model - (2nd iteration)
+parallel echo bin/standardize_labels_i2.sh {} 03_std/fused_labels/{/.} ::: 01_mb/fused_labels/*.mnc > stdfused_i2.jobs 
+/projects/jp/qbatch/qbatch -b sge -c 1 -j 1 stdfused_i2.jobs -- -l vf=0.5G,mem_free=0.5G,h_vmem=0.5G
+

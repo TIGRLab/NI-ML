@@ -1,0 +1,120 @@
+diff --git a/bin/mb b/bin/mb
+index 1f9f6ce..b43f904 100755
+--- a/bin/mb
++++ b/bin/mb
+@@ -33,12 +33,12 @@ STAGE_TAR       = 'mb_tar'         # tar up
+ #   stage -> (max_processors_per_node, walltime)
+ # The order also matters, as later stages may depend on earlier stages only.
+ stage_queue_hints = {  
+-  STAGE_REG_ATLAS: {'procs':    4, 'walltime': '6:00:00'},
++  STAGE_REG_ATLAS: {'procs':   12, 'walltime': '8:00:00'},
+   STAGE_REG_TEMPL: {'procs': None, 'walltime': '4:00:00'},
+   STAGE_XFM_JOIN:  {'procs': None, 'walltime': '0:10:00'},
+   STAGE_RESAMPLE:  {'procs': None, 'walltime': '1:00:00'}, 
+   STAGE_VOTE:      {'procs':    1, 'walltime': '8:00:00'},
+-  STAGE_TAR:       {'procs':    8, 'walltime': '1:00:00'}}
++  STAGE_TAR:       {'procs':   12, 'walltime': '1:00:00'}}
+ 
+ # stage descriptions
+ stage_description = {
+@@ -135,7 +135,7 @@ def main():
+                                    help="Queueing method to use")
+   group.add_argument("-n", dest="dry_run", default=False,
+     action="store_true", help="Dry run. Show what would happen.")
+-  group.add_argument("-j", "--processes", default=8, 
++  group.add_argument("-j", "--processes", default=12, 
+     type=int, metavar='N',
+     help="Number of processes to parallelize over.")
+   group.add_argument("--clobber", default=False, 
+@@ -289,6 +289,8 @@ def command_run(options):
+         warning("Other queues treat this as stage as 'register'. " + 
+                 "You will need to run the 'voting' stage separately.") 
+   p.run()
++  if not options.save:
++    shutil.rmtree(p.temp_dir)
+  
+ def command_init(options): 
+   """Entry point from the command line to init a folder for MAGeT brain"""
+@@ -438,7 +440,7 @@ class CommandQueue(object):
+       raise Exception("Returns %i :: %s" %( proc.returncode, command ))
+ 
+ class ParallelCommandQueue(CommandQueue):
+-  def __init__(self, processors = 8): 
++  def __init__(self, processors = 12): 
+     CommandQueue.__init__(self)
+     self.processors = processors
+ 
+@@ -458,7 +460,7 @@ class ParallelCommandQueue(CommandQueue):
+     self.execute(command, input='\n'.join(commands))
+ 
+ class QBatchCommandQueue(CommandQueue):
+-  def __init__(self, processors = 8): 
++  def __init__(self, processors = 12): 
+     CommandQueue.__init__(self)
+     self.processors = processors
+ 
+@@ -489,7 +491,7 @@ class QBatchCommandQueue(CommandQueue):
+ 
+ class FilesCommandQueue(CommandQueue):
+   """Dumps the queue to a set of files that can be dealt with manually."""
+-  def __init__(self, processors = 8): 
++  def __init__(self, processors = 12): 
+     CommandQueue.__init__(self)
+     self.processors = processors
+ 
+@@ -575,6 +577,7 @@ class MAGeTBrain(object):
+           ' '.join(candidate_labels), fused_lbl)
+       if not exists(fused_lbl):
+         self.queue.append_commands(STAGE_VOTE, [command])
++        self.queue.append_commands(STAGE_VOTE, ['tarbro {0}_candidates {1}'.format(fused_lbl, ' '.join(candidate_labels))])
+ 
+   def resample_labels(self, xfmbasedir, source_lbl, target, output_lbl, stems):
+     """resample a label via transforms from images stem_1 ... stem_n
+diff --git a/bin/mb_register b/bin/mb_register
+index 3827d3f..c34b982 100755
+--- a/bin/mb_register
++++ b/bin/mb_register
+@@ -31,7 +31,7 @@ atlas_res_mask=$output_dir/masklinres.mnc
+ 
+ # LINEAR  
+ if [ ! -e $AT_lin_xfm ]; then
+-  mincANTS 3 -m CC[$atlas,$target,1,4] \
++  ANTS 3 -m CC[$atlas,$target,1,4] \
+       -i 0 \
+       -o $AT_lin_xfm \
+       --number-of-affine-iterations 10000x10000x10000x10000x10000 \
+@@ -49,7 +49,7 @@ if [ -e $atlas_mask ]; then
+ fi 
+ # NONLINEAR
+ if [ ! -e $TA_nl_xfm ]; then
+-  mincANTS 3 -m CC[$target,$atlas_res,1,4] \
++  ANTS 3 -m CC[$target,$atlas_res,1,4] \
+     $ANTS_MASK_ARGS \
+     --continue-affine false \
+     --use-Histogram-Matching \
+diff --git a/bin/vote.py b/bin/vote.py
+index 2ba3afa..93852a8 100755
+--- a/bin/vote.py
++++ b/bin/vote.py
+@@ -312,10 +312,10 @@ if __name__ == "__main__":
+         default=None, type="string", 
+         help="Directory containing registrations from template library to subject.")
+     group.add_option("--tar_output", dest="tar_output", 
+-        default=False, action="store_true", 
++        default=True, action="store_true", 
+         help="all fusion output is tar'd into a single file placed in fusion_dir")
+     group.add_option("--tar_everything", dest="tar_everything", 
+-        default=False, action="store_true", 
++        default=True, action="store_true", 
+         help="all intermediate files are tar'd into a single file placed in output_dir")
+     parser.add_option_group(group)
+     
+@@ -350,7 +350,7 @@ if __name__ == "__main__":
+         action="store_true", 
+         help="Do a dry run (nothing is executed).")
+     group.add_option("--processes", dest="processes",
+-        default=8, type="int", 
++        default=12, type="int", 
+         help="Number of processes to parallelize over.")
+     group.add_option("--do_subject_registrations", dest="do_subject_registrations",
+         default=None, type="string",
