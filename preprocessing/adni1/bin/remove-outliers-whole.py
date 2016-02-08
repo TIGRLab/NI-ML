@@ -11,13 +11,27 @@ Usage:
     remove-outliers-whole.py [options] <rawdata.h5> <outputdir>
 
 Options:
-    --freq-threshold N    If a voxel appears N or fewer times in all of the
-                          labels then images with this voxel set will be
-                          considered outliers. [default: 300]
-    --progress-freq N     Show progress every N images processed [default: 10000]
+    -f N, --factor N        Scaling factor f used when deciding whether to
+                            discard labels "too different" from the mask. 
+                            The number of voxels that differ from the mask are
+                            used as a score for each label. In order to be
+                            accepted, a label must have score such that:
+
+                                score < avg(scores) + f * stddev(scores)
+
+                            [default: 1.0]
+
+    -t N, --threshold N     After filtering high scoring labels, if a voxel
+                            appears N or fewer times in all of the labels then
+                            labels with this voxel set will be considered
+                            outliers. [default: 300]
+
+    --progress-freq N       Show progress every N images processed 
+                            [default: 10000]
 """
 
 from docopt import docopt
+import os.path
 
 def progress(complete,total,duration,period):
     print "Completed {}/{}. Last {} in {:.0f}s. Estimated time left: {:.0f}m".format(
@@ -27,13 +41,18 @@ if __name__ == '__main__':
 
     arguments = docopt(__doc__) 
     rawdatafile = arguments['<rawdata.h5>']
-    outputdir   = arguments['<outputdir>']
-    outlier_threshold = int(arguments['--freq-threshold'])
-    printfreq         = int(arguments['--progress-freq'])
+    outputdir = arguments['<outputdir>']
+    threshold = int(arguments['--threshold'])
+    f = float(arguments['--factor'])
+    printfreq = int(arguments['--progress-freq'])
 
-    scoresfile        = outputdir + '/cached_scores.npy' 
-    voxelfreqfile     = outputdir + '/cached_voxel_freq.npy' 
-    datafile          = outputdir + '/data.h5' 
+    stem = os.path.basename(rawdatafile).replace('.h5','')
+    scoresfile = "{}/{}_factor={}_{}".format(
+                    outputdir, stem, f, 'scores.npy')
+    voxelfreqfile = "{}/{}_factor={}_{}".format(
+                    outputdir, stem, f, 'voxel-freq.npy')
+    datafile = "{}/{}_factor={}_thresh={}_{}".format(
+                    outputdir, stem, f, threshold, 'data.h5')
     
     print "Loading libraries..."
     from time import time
@@ -79,7 +98,7 @@ if __name__ == '__main__':
     assert rawdata.shape[0] == scores.shape[0]
 
     # exclude labels with scores differing too much from the mean
-    passing_idx = scores < (np.average(scores)+np.std(scores))
+    passing_idx = scores < (np.average(scores) + f * np.std(scores))
     print "# labels with passing scores:", np.sum(passing_idx)
     print 
 
@@ -113,10 +132,10 @@ if __name__ == '__main__':
         voxel_freq_idx = np.load(voxelfreqfile)
     print 
 
-    outlier_mask      = voxel_freq_idx <= outlier_threshold
-    data_mask         = voxel_freq_idx > outlier_threshold
+    outlier_mask      = voxel_freq_idx <= threshold
+    data_mask         = voxel_freq_idx > threshold
 
-    print "Outlier voxel frequency threshold: {}".format(outlier_threshold)
+    print "Outlier voxel frequency threshold: {}".format(threshold)
     print "Total # voxels in volume: ", np.prod(rawdata.shape[1:])
     print "# zero voxels:", len(np.where(voxel_freq_idx == 0)[0])
     print "# outlier voxels:", len(np.where(outlier_mask)[0])

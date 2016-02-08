@@ -24,8 +24,8 @@ for tarfile in $@; do
     mkdir $temp2/l_std; find $temp1 -name '*_l_std.mnc' -exec mv '{}' $temp2/l_std \;
     mkdir $temp2/r_std; find $temp1 -name '*_r_std.mnc' -exec mv '{}' $temp2/r_std \; 
 
-    bin/hdfify.py 02_std/candidate_labels_bbox_l_std.mnc $left $output $temp2/l_std
-    bin/hdfify.py 02_std/candidate_labels_bbox_r_std.mnc $right $output $temp2/r_std
+    bin/hdfify.py 02_std/candidate_labels_bbox_l_std.mnc $left $temp2/l_std
+    bin/hdfify.py 02_std/candidate_labels_bbox_r_std.mnc $right $temp2/r_std
 
     rm -rf $temp1/* $temp2/*;
 done
