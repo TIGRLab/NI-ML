@@ -12,18 +12,56 @@ minclookup -quiet -discrete -lut_string "1 1;" -clobber 02_std/model_labels_res.
 parallel echo bin/standardize_labels.sh {} 02_std/fused_labels/{/.} ::: 01_mb/fused_labels/*.mnc > stdfused.jobs
 /projects/jp/qbatch/qbatch -b sge -c 1 -j 1 stdfused.jobs -- -l vf=0.5G,mem_free=0.5G,h_vmem=0.5G
 
-# compute kappa with model
-parallel --tag volume_similarity --kappa 02_std/model_labels_res_l.mnc {} ::: 02_std/fused_labels/*_l_std.mnc > fused_left_kappa.csv
-parallel --tag volume_similarity --kappa 02_std/model_labels_res_r.mnc {} ::: 02_std/fused_labels/*_r_std.mnc > fused_right_kappa.csv
-
-# create a left and right averate of subjects, and threshold
-mincaverage -byte 02_std/fused_labels/*l_std.mnc 02_std/average_l_std.mnc 
-mincaverage -byte 02_std/fused_labels/*r_std.mnc 02_std/average_r_std.mnc
-
-minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_l_std.mnc 02_std/average_l_std_0.5.mnc 
-minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_r_std.mnc 02_std/average_r_std_0.5.mnc 
+# # compute kappa with model
+# parallel --tag volume_similarity --kappa 02_std/model_labels_res_l.mnc {} ::: 02_std/fused_labels/*_l_std.mnc > fused_left_kappa.csv
+# parallel --tag volume_similarity --kappa 02_std/model_labels_res_r.mnc {} ::: 02_std/fused_labels/*_r_std.mnc > fused_right_kappa.csv
+# 
+# # create a left and right averate of subjects, and threshold
+# mincaverage -byte 02_std/fused_labels/*l_std.mnc 02_std/average_l_std.mnc 
+# mincaverage -byte 02_std/fused_labels/*r_std.mnc 02_std/average_r_std.mnc
+# 
+# minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_l_std.mnc 02_std/average_l_std_0.5.mnc 
+# minccalc -expression 'A[0] > 0.5 ? 1 : 0' 02_std/average_r_std.mnc 02_std/average_r_std_0.5.mnc 
 
 # register to thresholded model - (2nd iteration)
 parallel echo bin/standardize_labels_i2.sh {} 03_std/fused_labels/{/.} ::: 01_mb/fused_labels/*.mnc > stdfused_i2.jobs 
 /projects/jp/qbatch/qbatch -b sge -c 1 -j 1 stdfused_i2.jobs -- -l vf=0.5G,mem_free=0.5G,h_vmem=0.5G
 
+
+# make a bounding box for all candidate labels
+mincmath -add 02_std/candidate_labels/*_l_std.mnc candidate_labels_bbox_l_std.mnc
+mincmath -add 02_std/candidate_labels/*_r_std.mnc candidate_labels_bbox_r_std.mnc
+
+# load labels into hdf5
+bin/hdfify_candidate_labels.sh \
+  02_std/left_candidate_3d.h5 \
+  02_std/right_candidate_3d.h5 \
+  02_std/candidate_labels/*.tar
+
+cp -l 02_std/fused_labels/*_l_std.mnc 02_std/fused_labels_l_std/
+cp -l 02_std/fused_labels/*_r_std.mnc 02_std/fused_labels_r_std/
+
+bin/hdfify.py \
+    02_std/candidate_labels_bbox_l_std.mnc \
+    02_std/left_fused_3d.h5 \
+    02_std/fused_labels_l_std/
+
+bin/hdfify.py \
+    02_std/candidate_labels_bbox_r_std.mnc \
+    02_std/right_fused_3d.h5 \
+    02_std/fused_labels_r_std/
+
+# remove outlier labels and outlier voxels from candidates
+bin/remove-outliers-whole.py -f 1.0 -t 300 02_std/left_candidate_3d.h5 03_outlier_removal/
+bin/remove-outliers-whole.py -f 1.0 -t 300 02_std/right_candidate_3d.h5 03_outlier_removal/
+
+# mask fused data like candidate labels
+bin/remask.py \
+    02_std/left_fused_3d.h5 \
+    03_outlier_removal/left_candidate_3d_factor=1.0_thresh=300_data.h5 \
+    03_outlier_removal/left_fused_3d_factor=1.0_thresh=300_data.h5
+
+bin/remask.py \
+    02_std/right_fused_3d.h5 \
+    03_outlier_removal/right_candidate_3d_factor=1.0_thresh=300_data.h5 \
+    03_outlier_removal/right_fused_3d_factor=1.0_thresh=300_data.h5
