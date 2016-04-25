@@ -1,0 +1,1 @@
+./hdfify_job.sh average.mnc compressed/ left.h5 right.h5

@@ -1,0 +1,107 @@
+#! /usr/bin/env perl
+#
+# Andrew Janke - a.janke@gmail.com
+# The University of Queensland
+#
+# Copyright Andrew Janke, The University of Queensland.
+# Permission to use, copy, modify, and distribute this software and its
+# documentation for any purpose and without fee is hereby granted,
+# provided that the above copyright notice appear in all copies.  The
+# author and the University of Queensland make no representations about the
+# suitability of this software for any purpose.  It is provided "as is"
+# without express or implied warranty.
+
+use strict;
+use warnings "all";
+use Getopt::Tabular;
+use File::Basename;
+use File::Temp qw/ tempdir /;
+
+my($Help, $Usage, $me, $history);
+my(@opt_table, %opt, $infile, $outfile, @args, $tmpdir);
+
+$me = &basename($0);
+%opt = (
+   'verbose'   => 0,
+   'clobber'   => 0,
+   'fake'      => 0,
+   'direction' => 'x',
+   );
+
+$Help = <<HELP;
+| $me flips a volume about its centre (volume not world) there
+|    are far easier ways to flip a volume about its world centre
+|    than this.
+| 
+| Problems or comments should be sent to: rotor\@cmr.uq.edu.au
+HELP
+
+$Usage = "Usage: $me [options] <infile.mnc> <outfile.mnc>\n".
+         "       $me -help to list options\n\n";
+
+@opt_table = (
+   ["-verbose", "boolean", 0, \$opt{verbose},
+      "be verbose" ],
+   ["-clobber", "boolean", 0, \$opt{clobber},
+      "clobber existing check files" ],
+   ["-fake", "boolean", 0, \$opt{fake},
+      "do a dry run, (echo cmds only)" ],
+      
+   ["-x", "const", 'x', \$opt{direction},
+      "flip volume in x-plane (default)" ],
+   ["-y", "const", 'y', \$opt{direction},
+      "flip volume in y-plane" ],
+   ["-z", "const", 'z', \$opt{direction},
+      "flip volume in z-plane" ],
+   );
+   
+# get history string
+chomp($history = `date`);
+$history .= '>>>> ' . join(' ', $me, @ARGV);
+
+# check args
+&Getopt::Tabular::SetHelp($Help, $Usage);
+&GetOptions(\@opt_table, \@ARGV) || exit 1;
+die $Usage if($#ARGV != 1);
+$infile = shift(@ARGV);
+$outfile = shift(@ARGV);
+
+# check for files
+die "$me: Couldn't find input file: $infile\n" if (!-e $infile);
+if(-e $outfile && !$opt{clobber}){
+   die "$me: $outfile exists, -clobber to overwrite\n";
+   }
+
+# make tmpdir
+$tmpdir = &tempdir( "$me-XXXXXXXX", TMPDIR => 1, CLEANUP => 1 );
+
+my($step);
+
+# get file start and step info
+chomp($step = `mincinfo -attvalue $opt{direction}space:step $infile`);
+
+# first make sure we don't get bitten by slice normalisation
+&do_cmd('mincreshape', '-clobber', '-quiet',
+        '-normalize',
+        $infile, "$tmpdir/nrm.mnc");
+# reshape
+&do_cmd('mincreshape', '-clobber', '-quiet',
+        '-dimsize', "$opt{direction}space=-1",
+        ($step > 0) ? "-$opt{direction}direction" :"+$opt{direction}direction",
+        "$tmpdir/nrm.mnc", "$tmpdir/res.mnc");
+
+# create template image and copy data
+&do_cmd('cp', '-f', "$tmpdir/nrm.mnc", $outfile);
+&do_cmd('minccopy', "$tmpdir/res.mnc", $outfile);
+
+# add the history string to the output file
+&do_cmd('minc_modify_header',
+   '-sappend', ":history='$history'",
+   $outfile);
+
+sub do_cmd { 
+   print STDOUT "@_\n" if $opt{verbose};
+   if(!$opt{fake}){
+      system(@_) == 0 or die;
+      }
+   }

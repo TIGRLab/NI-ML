@@ -1,0 +1,34 @@
+This is a redo of the adni1_adni-model preprocessing step for the NI-ML project
+
+## Background 
+The situation is this. The ADNI1 hippocampal labels used in the NI-ML project
+were created one ferocious Christmas break in the Kimel lab by Nikhil and
+Jon... okay, by Jon with Nikhil working on the ML side. 
+
+Unfortunately, it appears Jon used Jen's hippocampal labels as atlases... which
+doesn't match what he did with the ADNI2 data, where he used the Winterburn
+atlases. 
+
+This project fixes that. 
+
+## commands
+
+    # registration, one core per reg command
+    mb run register -n 2>&1 | grep -o mb_register.* | qbatch -N adni1-mb-reg --ppj 1 -c 1 -j 1 -w 2:00:00 -
+
+    # voting, 15 cores per job, with each job being one subject voting
+    mb run -n -j15 2>&1 | grep -o '/.*' | sed 's/ -n//g' | qbatch --ppj 15 -j 1 -c 1 -w 8:00:00 -N adni1-mb-vote -v -
+
+    # standardize candidate labels 
+    parallel echo bin/standardize_labels.sh {} $PWD/output/std/{/} ::: $PWD/output/fusion/majority_vote/*.tar.gz | \
+        qbatch -j1 -c1 --ppj 12 --walltime 4:00:00 -N adni1_std -
+
+    # standardize fused labels
+    echo bin/standardize_labels.sh \
+        /imaging/scratch/kimel/jpipitone/adni1_adni-model_winterburn-atlas/output/fusion/majority_vote/fused_labels.tar.gz \
+        /imaging/scratch/kimel/jpipitone/adni1_adni-model_winterburn-atlas/output/std/fused_labels.tar.gz | \
+        qbatch -j1 -c1 --ppj 12 --walltime 4:00:00 -N adni1_std_fused
+
+    # hdfify 
+    bin/hdfify.py --mask std/ADNI_037_S_0150_MR_MPR-R__GradWarp__N3__Scaled_Br_20070806150947680_S11434_I65130.mnc \
+        /imaging/scratch/kimel/jpipitone/adni1_adni-model_winterburn-atlas/output/fusion/majority_vote data.h5
