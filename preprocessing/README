@@ -1,0 +1,48 @@
+Candidate label preprocessing
+=============================
+
+1. Standardise labels by moving them to a standard space (bin/standarize_labels.sh)
+
+   Expects a tarball of labels. For candidate labels you may have a
+   tarball per subject, so you'll need to run this for each subject.
+
+2. Pack labels into a large HDF5 array (bin/hdfify.py). 
+
+   Expects a tarball of labels and reads them into an HDF5 array. This will
+   append to an existing array, so you can run it once for each subject's
+   candidate label tarball, for instance.
+ 
+   This script also expects a mask that defines a bounding box used to limit
+   the data extracted from each label. You can use the standard space label.
+
+3. Drop "outlier" voxels to compact the data, and linearise (bin/remove-outliers.py)
+
+4. (Optional) Normalize file names (bin/norm-filenames.py). This was 
+   specifically built for adni1/adni2 labels.
+
+Example: 
+
+Say you have a folder of candidate label tarballs: 
+
+    candidate-labels/
+        subject1.tar.gz
+        subject2.tar.gz
+        ...
+
+To preprocess them you'd run: 
+
+    export PATH=$PATH:/path/to/NI-ML/preprocessing/bin
+    export STDLABEL=/path/to/NI-ML/preprocessing/std/ADNI_037_S_0150_MR_MPR-R__GradWarp__N3__Scaled_Br_20070806150947680_S11434_I65130.mnc
+
+    module load python python-extras
+    module load GNU_PARALLEL         # on the SCC
+
+    standardize_labels.sh candidate-labels/subject1.tar.gz standarized-labels/subject1.tar.gz $STDLABEL
+    standardize_labels.sh candidate-labels/subject2.tar.gz standarized-labels/subject2.tar.gz $STDLABEL
+    ...
+
+    hdfify.py $STDLABEL raw-labels.h5 standarized-labels/subject1.tar.gz
+    hdfify.py $STDLABEL raw-labels.h5 standarized-labels/subject2.tar.gz
+    ...
+
+    remove-outliers.py raw-labels.h5 output/
