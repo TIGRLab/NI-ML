@@ -41,8 +41,8 @@ To preprocess them you'd run:
     standardize_labels.sh candidate-labels/subject2.tar.gz standarized-labels/subject2.tar.gz $STDLABEL
     ...
 
-    hdfify.py $STDLABEL raw-labels.h5 standarized-labels/subject1.tar.gz
-    hdfify.py $STDLABEL raw-labels.h5 standarized-labels/subject2.tar.gz
+    hdfify.py $STDLABEL raw-labels.h5 /path/to/standarized-labels/
+    hdfify.py $STDLABEL raw-labels.h5 /path/to/standarized-labels/
     ...
 
     remove-outliers.py raw-labels.h5 output/
