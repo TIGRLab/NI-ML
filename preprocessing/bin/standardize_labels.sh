@@ -53,12 +53,12 @@ parallel volflip {1} $output_dir/{1/} ::: $tempdir/data/labels/right/*.mnc
 
 # lsq6 to a standard space
 output_dir=$tempdir/data/labels/std
-mkdir ${output_dir} -p
+mkdir ${output_dir} ${output_dir}/left ${output_dir}/right -p
 (
-parallel echo bestlinreg.pl -lsq6 {1} ${stdspace} $output_dir/{1/.}_right.xfm $output_dir/{1/.}_right.mnc ::: $tempdir/data/labels/right/flipped/*.mnc
-parallel echo bestlinreg.pl -lsq6 {1} ${stdspace} $output_dir/{1/.}_left.xfm  $output_dir/{1/.}_left.mnc ::: $tempdir/data/labels/left/*.mnc
-) | $parallel -v
+parallel echo bestlinreg.pl -lsq6 {1} ${stdspace} $output_dir/{1/.}_right.xfm $output_dir/right/{1/.}_right.mnc ::: $tempdir/data/labels/right/flipped/*.mnc
+parallel echo bestlinreg.pl -lsq6 {1} ${stdspace} $output_dir/{1/.}_left.xfm  $output_dir/left/{1/.}_left.mnc ::: $tempdir/data/labels/left/*.mnc
+) | parallel -v
 
-( cd $tempdir/data && tar -czf $output_tarball . )
+( cd $tempdir/data/labels && tar -czf $output_tarball std/left std/right )
 
 rm -rf $tempdir 

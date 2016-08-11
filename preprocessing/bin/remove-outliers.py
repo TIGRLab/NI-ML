@@ -13,11 +13,11 @@ Usage:
 Options:
     -f N, --factor N        Scaling factor f used when deciding whether to
                             discard labels "too different" from the mask. 
-                            The number of voxels that differ from the mask are
-                            used as a score for each label. In order to be
-                            accepted, a label must have score such that:
+                            Dice kappa w.r.t. the mask is used as a score 
+			    for each label. In order to be accepted, a label 
+			    must have score such that:
 
-                                score < avg(scores) + f * stddev(scores)
+                                score > f
 
                             [default: 0.5]
 
@@ -108,7 +108,7 @@ if __name__ == '__main__':
     print 'empty vols: {}'.format(np.sum(np.array(candidate_vols)==0))
     print 'Score stats: mean = {}, stdev={}'.format(np.average(scores),np.std(scores))
 
-    #passing_idx = scores < (np.average(scores) + f * np.std(scores))
+    #passing_idx = scores > (np.average(scores) - f * np.std(scores))
     passing_idx = scores > f
 
     print "# labels with passing scores:", np.sum(passing_idx)
