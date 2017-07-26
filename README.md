@@ -1,21 +1,8 @@
 # NI-ML
 Machine-Learning tools for processing MR image data (Validation Code - not a production pipeline) 
 
-Things to fill out: 
-
-Dataset properties
-* Structures: HC, MTL, Cortical ROIs
-* Dx: CN, MCI, AD
-* ... 
-* 
-
-Pre-processing scripts:
-* ...
-* ...
-* 
-
-ML Models
-* PCA / LR
-* Deepnets
-* ... 
-* 
+**Directory Structure**
+- preprocessing: scripts to preprocess structrual MR data
+- models: Machine learning models for various diagnostic / prognostic tasks
+- tutorial: stand-alone tutorials
+- visualizations: code for custom visualizations
