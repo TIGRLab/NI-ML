@@ -3,6 +3,6 @@ Machine-Learning tools for processing MR image data (Validation Code - not a pro
 
 **Directory Structure**
 - preprocessing: scripts to preprocess structrual MR data
-- models: Machine learning models for various diagnostic / prognostic tasks
+- models: machine learning models for various diagnostic / prognostic tasks
 - tutorial: stand-alone tutorials
 - visualizations: code for custom visualizations
